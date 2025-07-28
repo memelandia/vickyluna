@@ -8,7 +8,9 @@ exports.handler = async () => {
             codigoId: record.fields.ID,
             nombre: record.fields['Nombre Fan'],
             premios: premiosStringToArray(record.fields.Premios),
-            usado: record.fields.Usado || false
+            usado: record.fields.Usado || false,
+            tiradasTotales: record.fields['Tiradas Totales'] || 0,
+            tiradasRestantes: record.fields['Tiradas Restantes'] || 0
         }));
         return { statusCode: 200, headers, body: JSON.stringify({ success: true, data: formattedCodes }) };
     } catch (error) {

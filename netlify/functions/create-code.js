@@ -11,7 +11,15 @@ exports.handler = async (event) => {
             return { statusCode: 400, headers, body: JSON.stringify({ success: false, message: 'Faltan datos requeridos.' }) };
         }
 
-        const data = { "ID": codigoId, "Nombre Fan": nombreFan, "Premios": premiosArrayToString(premios), "Usado": false };
+        const totalTiradas = premios.length;
+        const data = {
+            "ID": codigoId,
+            "Nombre Fan": nombreFan,
+            "Premios": premiosArrayToString(premios),
+            "Tiradas Totales": totalTiradas,
+            "Tiradas Restantes": totalTiradas,
+            "Usado": false
+        };
         const existingRecords = await table.select({ maxRecords: 1, filterByFormula: `{ID} = '${codigoId}'` }).firstPage();
         
         const operation = existingRecords.length > 0 ? 'update' : 'create';

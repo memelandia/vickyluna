@@ -26,7 +26,8 @@ exports.handler = async (event) => {
                 success: true,
                 data: {
                     nombreFan: codeData['Nombre Fan'],
-                    premios: premiosStringToArray(codeData.Premios)
+                    premios: premiosStringToArray(codeData.Premios),
+                    tiradasRestantes: codeData['Tiradas Restantes'] || 0
                 }
             })
         };

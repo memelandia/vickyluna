@@ -643,12 +643,12 @@
                             <small>Estado: ${estado}</small>
                         </div>
                         <div class="code-info">
-                            <span>${premiosArray.length} Premio(s)</span>
+                            <span>${codigo.tiradasTotales || premiosArray.length} Premio(s)</span>
                             <small>${premiosTexto}</small>
                         </div>
                         <div style="text-align: center;">
-                            <strong>${premiosArray.length}</strong><br>
-                            <small>Tiradas</small>
+                            <strong>${codigo.tiradasRestantes || 0}</strong><br>
+                            <small>Restantes</small>
                         </div>
                         <div style="display: flex; flex-direction: column; gap: 5px;">
                             ${botones}

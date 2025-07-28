@@ -204,6 +204,8 @@
         */
 
         // Nueva función que usa el backend para marcar códigos como usados
+        // FUNCIÓN DEPRECADA - Ahora se maneja automáticamente con gastar-tiro.js
+        /*
         async function marcarCodigoComoUsado(codigo) {
             try {
                 const response = await fetch('/.netlify/functions/expire-code', {
@@ -225,6 +227,7 @@
                 // No mostramos error al usuario para no interrumpir la experiencia
             }
         }
+        */
 
         function dibujarRuletaCompleta() {
             const canvas = document.getElementById('opciones');
@@ -343,16 +346,29 @@
                 mostrarPopupPremio(premioGanado);
                 mostrarMensaje(`🎉 ¡Felicidades ${nombreUsuario}! Ganaste: <b>${premioGanado}</b>`);
                 tiradasRestantes--;
-                premiosActuales.splice(indiceGanadorEnPool, 1);
                 
-                if (tiradasRestantes > 0 && premiosActuales.length > 0) {
+                // Gastar el tiro en el backend
+                try {
+                    const response = await fetch('/.netlify/functions/gastar-tiro', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ codigoId: codigoActual })
+                    });
+                    
+                    const result = await response.json();
+                    console.log('Tiro gastado:', result);
+                } catch (error) {
+                    console.error('Error al gastar tiro:', error);
+                }
+                
+                if (tiradasRestantes > 0) {
                     setTimeout(() => {
                         document.getElementById('girarBtn').disabled = false;
                         mostrarMensaje(`✨ ¡Tienes ${tiradasRestantes} tirada(s) más! Sigue participando 🌟`);
                     }, 3000);
                 } else {
-                    // Marcar el código como usado antes de mostrar el mensaje final
-                    await marcarCodigoComoUsado(codigoActual);
                     setTimeout(() => {
                         mostrarMensaje(`🌟 ¡Gracias por participar ${nombreUsuario}! Ha sido una experiencia mágica 💖`);
                     }, 3000);
@@ -394,7 +410,7 @@
                     codigoActual = codigo;
                     nombreUsuario = datosCodigo.nombreFan;
                     premiosActuales = [...datosCodigo.premios];
-                    tiradasRestantes = premiosActuales.length;
+                    tiradasRestantes = datosCodigo.tiradasRestantes;
                     
                     mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
                     document.getElementById('girarBtn').disabled = false;
