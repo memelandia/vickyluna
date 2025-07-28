@@ -44,28 +44,39 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Buscar el código en Airtable
-        const records = await table.select({
+        // PASO 1: Buscar el registro usando nuestro ID personalizado
+        console.log(`Buscando código para reactivar: ${codigoId}`);
+        const searchRecords = await table.select({
+            maxRecords: 1, // Solo necesitamos uno
             filterByFormula: `{ID} = "${codigoId}"`
-        }).all();
+        }).firstPage();
 
         // Verificar si el código existe
-        if (records.length === 0) {
+        if (searchRecords.length === 0) {
+            console.log(`Código ${codigoId} no encontrado`);
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
                     success: false,
                     error: 'Código no encontrado',
-                    message: `El código ${codigoId} no existe`
+                    message: `El código ${codigoId} no existe en la base de datos`
                 })
             };
         }
 
-        const record = records[0];
+        // PASO 2: Obtener el registro encontrado y su ID interno de Airtable
+        const foundRecord = searchRecords[0];
+        const airtableInternalId = foundRecord.id; // Este es el ID interno (rec...)
+        
+        console.log(`Código encontrado. ID interno de Airtable: ${airtableInternalId}`);
+
+        // Verificar el estado actual antes de actualizar
+        const currentStatus = foundRecord.get('Usado');
+        console.log(`Estado actual del código: ${currentStatus}`);
 
         // Verificar si el código ya está activo
-        if (record.get('Usado') === false) {
+        if (currentStatus === false) {
             return {
                 statusCode: 409,
                 headers,
@@ -77,10 +88,11 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Actualizar el registro para reactivarlo
-        const updatedRecord = await table.update([
+        // PASO 3: Actualizar el registro usando el ID interno correcto
+        console.log(`Reactivando código ${codigoId}`);
+        const updateResult = await table.update([
             {
-                id: record.id,
+                id: airtableInternalId, // Usar el ID interno de Airtable
                 fields: {
                     'Usado': false,
                     'Fecha Uso': null // Limpiar la fecha de uso
@@ -88,14 +100,22 @@ exports.handler = async (event, context) => {
             }
         ]);
 
+        // Verificar que la actualización fue exitosa
+        if (!updateResult || updateResult.length === 0) {
+            throw new Error('La actualización no devolvió resultados');
+        }
+
+        const updatedRecord = updateResult[0];
+        console.log(`Código ${codigoId} reactivado exitosamente`);
+
         // Formatear la respuesta
         const reactivatedCode = {
-            id: updatedRecord[0].id,
-            codigoId: updatedRecord[0].get('ID'),
-            nombre: updatedRecord[0].get('Nombre Fan'),
-            premios: premiosStringToArray(updatedRecord[0].get('Premios')),
-            usado: updatedRecord[0].get('Usado'),
-            fechaUso: updatedRecord[0].get('Fecha Uso')
+            id: updatedRecord.id,
+            codigoId: updatedRecord.get('ID'),
+            nombre: updatedRecord.get('Nombre Fan'),
+            premios: premiosStringToArray(updatedRecord.get('Premios')),
+            usado: updatedRecord.get('Usado'),
+            fechaUso: updatedRecord.get('Fecha Uso')
         };
 
         return {
@@ -103,13 +123,13 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 success: true,
-                message: 'Código reactivado exitosamente',
+                message: `Código ${codigoId} reactivado exitosamente`,
                 data: reactivatedCode
             })
         };
 
     } catch (error) {
-        console.error('Error al reactivar código:', error);
+        console.error('Error crítico al reactivar código:', error);
         
         return {
             statusCode: 500,
@@ -117,7 +137,7 @@ exports.handler = async (event, context) => {
             body: JSON.stringify({
                 success: false,
                 error: 'Error interno del servidor',
-                message: error.message
+                message: `Error al procesar la reactivación: ${error.message}`
             })
         };
     }

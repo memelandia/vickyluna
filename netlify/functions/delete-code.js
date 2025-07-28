@@ -44,51 +44,60 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Buscar el código en Airtable
-        const records = await table.select({
+        // PASO 1: Buscar el registro usando nuestro ID personalizado
+        console.log(`Buscando código para eliminar: ${codigoId}`);
+        const searchRecords = await table.select({
+            maxRecords: 1, // Solo necesitamos uno
             filterByFormula: `{ID} = "${codigoId}"`
-        }).all();
+        }).firstPage();
 
         // Verificar si el código existe
-        if (records.length === 0) {
+        if (searchRecords.length === 0) {
+            console.log(`Código ${codigoId} no encontrado`);
             return {
                 statusCode: 404,
                 headers,
                 body: JSON.stringify({
                     success: false,
                     error: 'Código no encontrado',
-                    message: `El código ${codigoId} no existe`
+                    message: `El código ${codigoId} no existe en la base de datos`
                 })
             };
         }
 
-        const record = records[0];
+        // PASO 2: Obtener el registro encontrado y su ID interno de Airtable
+        const foundRecord = searchRecords[0];
+        const airtableInternalId = foundRecord.id; // Este es el ID interno (rec...)
+        
+        console.log(`Código encontrado. ID interno de Airtable: ${airtableInternalId}`);
 
         // Guardar información del código antes de eliminarlo
         const deletedCodeInfo = {
-            id: record.id,
-            codigoId: record.get('ID'),
-            nombre: record.get('Nombre Fan'),
-            premios: premiosStringToArray(record.get('Premios')),
-            usado: record.get('Usado'),
-            fechaUso: record.get('Fecha Uso') || null
+            id: foundRecord.id,
+            codigoId: foundRecord.get('ID'),
+            nombre: foundRecord.get('Nombre Fan'),
+            premios: premiosStringToArray(foundRecord.get('Premios')),
+            usado: foundRecord.get('Usado'),
+            fechaUso: foundRecord.get('Fecha Uso') || null
         };
 
-        // Eliminar el registro de Airtable
-        await table.destroy([record.id]);
+        // PASO 3: Eliminar el registro usando el ID interno correcto
+        console.log(`Eliminando código ${codigoId} con ID interno ${airtableInternalId}`);
+        await table.destroy([airtableInternalId]);
+        console.log(`Código ${codigoId} eliminado exitosamente`);
 
         return {
             statusCode: 200,
             headers,
             body: JSON.stringify({
                 success: true,
-                message: 'Código eliminado exitosamente',
+                message: `Código ${codigoId} eliminado exitosamente`,
                 data: deletedCodeInfo
             })
         };
 
     } catch (error) {
-        console.error('Error al eliminar código:', error);
+        console.error('Error crítico al eliminar código:', error);
         
         return {
             statusCode: 500,
@@ -96,7 +105,7 @@ exports.handler = async (event, context) => {
             body: JSON.stringify({
                 success: false,
                 error: 'Error interno del servidor',
-                message: error.message
+                message: `Error al procesar la eliminación: ${error.message}`
             })
         };
     }
