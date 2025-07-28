@@ -59,7 +59,7 @@
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             width: 100%; max-width: 1200px; flex: 1; gap: 40px;
         }
-        @media (min-width: 1024px) {
+        @media (min-width: 992px) {
             .main-content {
                 display: grid; grid-template-columns: 1fr auto 1fr;
                 align-items: center; gap: 60px;
@@ -121,7 +121,261 @@
             animation: fadeIn 0.5s ease-in-out;
         }
         
-        @media (max-width: 480px) { #ruleta { width: 320px; height: 320px; } }
+        /* === DISEÑO RESPONSIVO COMPLETO === */
+        
+        /* Tablets y pantallas medianas */
+        @media (max-width: 992px) {
+            .main-content {
+                gap: 30px;
+            }
+            
+            .controls-title {
+                font-size: 2.2rem;
+            }
+            
+            #ruleta {
+                width: 400px;
+                height: 400px;
+                border-width: 8px;
+            }
+            
+            #flecha {
+                border-left-width: 22px;
+                border-right-width: 22px;
+                border-bottom-width: 45px;
+                top: -45px;
+            }
+            
+            .controls-section {
+                width: 300px;
+                padding: 30px;
+            }
+            
+            #girarBtn {
+                min-width: 250px;
+                padding: 16px 40px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Tablets pequeñas y móviles grandes */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+                gap: 15px;
+            }
+            
+            .main-content {
+                gap: 25px;
+            }
+            
+            .controls-title {
+                font-size: 2rem;
+                margin-bottom: 15px;
+            }
+            
+            #ruleta {
+                width: 350px;
+                height: 350px;
+                border-width: 7px;
+            }
+            
+            #flecha {
+                border-left-width: 20px;
+                border-right-width: 20px;
+                border-bottom-width: 40px;
+                top: -40px;
+            }
+            
+            .controls-section {
+                width: 280px;
+                padding: 25px;
+                gap: 18px;
+            }
+            
+            .form-title {
+                font-size: 1.3rem;
+            }
+            
+            #codigo {
+                padding: 12px 18px;
+                font-size: 0.9rem;
+            }
+            
+            #validarBtn {
+                padding: 12px 20px;
+                font-size: 0.9rem;
+            }
+            
+            #girarBtn {
+                min-width: 220px;
+                padding: 15px 35px;
+                font-size: 0.95rem;
+            }
+            
+            #mensaje {
+                font-size: 0.9rem;
+                padding: 10px 16px;
+            }
+            
+            .popup-content {
+                padding: 30px;
+                max-width: 400px;
+            }
+            
+            .popup-title {
+                font-size: 2.5rem;
+            }
+            
+            .popup-prize {
+                font-size: 1.3rem;
+                padding: 12px;
+            }
+            
+            .popup-close {
+                padding: 12px 25px;
+                font-size: 1rem;
+            }
+        }
+        
+        /* Móviles pequeños */
+        @media (max-width: 480px) {
+            .container {
+                padding: 10px;
+            }
+            
+            .main-content {
+                gap: 20px;
+            }
+            
+            .controls-title {
+                font-size: 1.8rem;
+                text-align: center;
+                margin-bottom: 10px;
+            }
+            
+            #ruleta {
+                width: 280px;
+                height: 280px;
+                border-width: 6px;
+            }
+            
+            #flecha {
+                border-left-width: 18px;
+                border-right-width: 18px;
+                border-bottom-width: 35px;
+                top: -35px;
+            }
+            
+            .controls-section {
+                width: 260px;
+                padding: 20px;
+                gap: 15px;
+            }
+            
+            .form-title {
+                font-size: 1.2rem;
+            }
+            
+            #codigo {
+                padding: 10px 15px;
+                font-size: 0.85rem;
+            }
+            
+            #validarBtn {
+                padding: 10px 18px;
+                font-size: 0.85rem;
+            }
+            
+            #girarBtn {
+                min-width: 200px;
+                padding: 14px 30px;
+                font-size: 0.9rem;
+            }
+            
+            #mensaje {
+                font-size: 0.85rem;
+                padding: 8px 14px;
+                margin-top: 8px;
+            }
+            
+            .popup-content {
+                padding: 25px;
+                max-width: 340px;
+            }
+            
+            .popup-title {
+                font-size: 2.2rem;
+                margin-bottom: 15px;
+            }
+            
+            .popup-prize {
+                font-size: 1.2rem;
+                padding: 10px;
+                margin: 15px 0;
+            }
+            
+            .popup-instructions {
+                font-size: 0.8rem;
+                margin-top: 20px;
+            }
+            
+            .popup-close {
+                padding: 10px 20px;
+                font-size: 0.95rem;
+            }
+            
+            /* Ajustar formas de fondo para móviles */
+            .shape:nth-child(1) { width: 50px; height: 50px; }
+            .shape:nth-child(2) { width: 70px; height: 70px; }
+            .shape:nth-child(3) { width: 40px; height: 40px; }
+            .shape:nth-child(4) { width: 60px; height: 60px; }
+            
+            .particle.heart { font-size: 16px; }
+            .particle.sparkle { width: 6px; height: 6px; }
+            .particle.star { font-size: 12px; }
+        }
+        
+        /* Móviles muy pequeños */
+        @media (max-width: 360px) {
+            .controls-title {
+                font-size: 1.6rem;
+            }
+            
+            #ruleta {
+                width: 250px;
+                height: 250px;
+                border-width: 5px;
+            }
+            
+            #flecha {
+                border-left-width: 15px;
+                border-right-width: 15px;
+                border-bottom-width: 30px;
+                top: -30px;
+            }
+            
+            .controls-section {
+                width: 240px;
+                padding: 18px;
+            }
+            
+            #girarBtn {
+                min-width: 180px;
+                padding: 12px 25px;
+                font-size: 0.85rem;
+            }
+            
+            .popup-content {
+                padding: 20px;
+                max-width: 300px;
+            }
+            
+            .popup-title {
+                font-size: 2rem;
+            }
+        }
+        
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
         
         /* === SISTEMA DE NOTIFICACIONES === */
@@ -430,13 +684,31 @@
 
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
-                ctx.font = "bold 16px Poppins, sans-serif";
+                
+                // Tamaño de fuente responsivo basado en el ancho de pantalla
+                let fontSize = 16;
+                let lineHeight = 18;
+                
+                if (window.innerWidth <= 360) {
+                    fontSize = 11;
+                    lineHeight = 13;
+                } else if (window.innerWidth <= 480) {
+                    fontSize = 12;
+                    lineHeight = 14;
+                } else if (window.innerWidth <= 768) {
+                    fontSize = 14;
+                    lineHeight = 16;
+                } else if (window.innerWidth <= 992) {
+                    fontSize = 15;
+                    lineHeight = 17;
+                }
+                
+                ctx.font = `bold ${fontSize}px Poppins, sans-serif`;
                 ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
                 ctx.shadowBlur = 4;
                 ctx.shadowOffsetX = 1;
                 ctx.shadowOffsetY = 1;
                 
-                const lineHeight = 18;
                 const startY = -(lineas.length - 1) * lineHeight / 2;
                 lineas.forEach((linea, index) => ctx.fillText(linea, 0, startY + (index * lineHeight)));
                 ctx.restore();
@@ -452,14 +724,32 @@
                 ctx.stroke();
             }
 
+            // Círculo central responsivo
+            let circleRadius = 40;
+            let emojiSize = 40;
+            
+            if (window.innerWidth <= 360) {
+                circleRadius = 28;
+                emojiSize = 28;
+            } else if (window.innerWidth <= 480) {
+                circleRadius = 32;
+                emojiSize = 32;
+            } else if (window.innerWidth <= 768) {
+                circleRadius = 35;
+                emojiSize = 35;
+            } else if (window.innerWidth <= 992) {
+                circleRadius = 38;
+                emojiSize = 38;
+            }
+
             ctx.beginPath();
-            ctx.arc(centroX, centroY, 40, 0, 2 * Math.PI);
+            ctx.arc(centroX, centroY, circleRadius, 0, 2 * Math.PI);
             ctx.fillStyle = "#c44569";
             ctx.fill();
             ctx.stroke();
             
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 40px Poppins, sans-serif";
+            ctx.font = `bold ${emojiSize}px Poppins, sans-serif`;
             ctx.shadowColor = 'transparent';
             ctx.textBaseline = "middle";
             ctx.textAlign = "center";
@@ -678,6 +968,17 @@
         document.getElementById('girarBtn').addEventListener('click', () => { soundClick.play(); girarRuleta(); });
         document.getElementById('popupCloseBtn').addEventListener('click', cerrarPopup);
         document.getElementById('codigo').addEventListener('keypress', e => { if (e.key === 'Enter') validarCodigo(); });
+        
+        // Redibujar ruleta cuando cambie el tamaño de ventana para adaptación responsiva
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(async () => {
+                if (premiosActuales && premiosActuales.length > 0) {
+                    await dibujarRuletaCompleta();
+                }
+            }, 250); // Debounce para evitar redibujado excesivo
+        });
     </script>
 </body>
 </html>
