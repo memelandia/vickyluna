@@ -71,8 +71,7 @@ exports.handler = async (event, context) => {
             nombre: record.get('Nombre Fan'),
             premios: premiosStringToArray(record.get('Premios')),
             usado: record.get('Usado'),
-            fechaCreacion: record.get('Fecha Creacion'),
-            fechaUso: record.get('Fecha Uso')
+            fechaUso: record.get('Fecha Uso') || null
         };
 
         // Eliminar el registro de Airtable

@@ -95,7 +95,6 @@ exports.handler = async (event, context) => {
             nombre: updatedRecord[0].get('Nombre Fan'),
             premios: premiosStringToArray(updatedRecord[0].get('Premios')),
             usado: updatedRecord[0].get('Usado'),
-            fechaCreacion: updatedRecord[0].get('Fecha Creacion'),
             fechaUso: updatedRecord[0].get('Fecha Uso')
         };
 

@@ -30,8 +30,7 @@ exports.handler = async (event, context) => {
     try {
         // Obtener todos los registros de la tabla
         const records = await table.select({
-            // Ordenar por fecha de creación más reciente primero
-            sort: [{ field: 'Fecha Creacion', direction: 'desc' }]
+            // Removemos el sort por fecha ya que ese campo no existe en Airtable
         }).all();
 
         // Formatear los registros para el frontend
@@ -46,8 +45,7 @@ exports.handler = async (event, context) => {
                 nombre: record.get('Nombre Fan') || '',
                 premios: premiosArray, // Array de premios convertido desde string
                 usado: record.get('Usado') || false,
-                fechaCreacion: record.get('Fecha Creacion'),
-                fechaUso: record.get('Fecha Uso')
+                fechaUso: record.get('Fecha Uso') || null
             };
         });
 

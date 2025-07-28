@@ -98,18 +98,24 @@ exports.handler = async (event, context) => {
             nombre: resultRecord.get('Nombre Fan'),
             premios: premiosStringToArray(resultRecord.get('Premios')),
             usado: resultRecord.get('Usado'),
-            fechaCreacion: resultRecord.get('Fecha Creacion'),
-            fechaUso: resultRecord.get('Fecha Uso')
+            fechaUso: resultRecord.get('Fecha Uso') || null
         };
 
         return {
             statusCode: isUpdate ? 200 : 201,
             headers,
             body: JSON.stringify({
-                success: true,
-                message: isUpdate ? 'Código actualizado exitosamente' : 'Código creado exitosamente',
-                data: responseCode,
-                operation: isUpdate ? 'update' : 'create'
+            success: true,
+            message: isUpdate ? 'Código actualizado exitosamente' : 'Código creado exitosamente',
+            data: {
+                id: responseCode.id,
+                codigoId: responseCode.codigoId,
+                nombre: responseCode.nombre,
+                premios: responseCode.premios,
+                usado: responseCode.usado,
+                fechaUso: responseCode.fechaUso
+            },
+            operation: isUpdate ? 'update' : 'create'
             })
         };
 
