@@ -180,8 +180,6 @@
             align-items: center;
             padding: 15px;
             margin-bottom: 10px;
-            background: linear-gradient(45deg, #ff6b9d, #c44569);
-            color: white;
             border-radius: 15px;
             transition: all 0.3s ease;
         }
@@ -272,6 +270,29 @@
             margin-bottom: 20px;
             text-align: center;
             display: none;
+        }
+
+        .code-item.active {
+            background: linear-gradient(45deg, #ff6b9d, #c44569);
+            color: white;
+        }
+
+        .code-item.used {
+            background: linear-gradient(45deg, #8e9eab, #52616b);
+            color: white;
+            opacity: 0.8;
+        }
+
+        .action-btn {
+            margin-left: 5px;
+        }
+
+        .reactivate-btn {
+            background: #2ecc71;
+        }
+
+        .reactivate-btn:hover {
+            background: #27ae60;
         }
 
         @media (max-width: 768px) {
@@ -542,7 +563,7 @@
             const codigos = cargarCodigos();
             if (codigos[codigo] && !confirm('Este código ya existe. ¿Deseas reemplazarlo?')) return;
             
-            codigos[codigo] = { nombre: nombre, premios: premiosSeleccionados.slice(0, tiradas) };
+            codigos[codigo] = { nombre: nombre, premios: premiosSeleccionados.slice(0, tiradas), usado: false };
             
             guardarCodigos(codigos);
             this.reset();
@@ -565,15 +586,46 @@
             lista.innerHTML = '';
             Object.entries(codigos).forEach(([codigo, datos]) => {
                 const div = document.createElement('div');
-                div.className = 'code-item';
+                div.className = `code-item ${datos.usado ? 'used' : 'active'}`;
+                
+                const estado = datos.usado ? 'Gastado' : 'Activo';
+                const botones = datos.usado 
+                    ? `<button class="delete-btn reactivate-btn action-btn" onclick="reactivarCodigo('${codigo}')">🔄 Reactivar</button>
+                       <button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo}')">🗑️ Eliminar</button>`
+                    : `<button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo}')">🗑️ Eliminar</button>`;
+                
                 div.innerHTML = `
-                    <div class="code-info"><strong>${codigo}</strong><small>Fan: ${datos.nombre}</small></div>
-                    <div class="code-info"><span>${datos.premios.length} Premio(s)</span><small>${datos.premios.join(', ')}</small></div>
-                    <div style="text-align: center;"><strong>${datos.premios.length}</strong><br><small>Tiradas</small></div>
-                    <button class="delete-btn" onclick="eliminarCodigo('${codigo}')">🗑️ Eliminar</button>
+                    <div class="code-info">
+                        <strong>${codigo}</strong>
+                        <small>Fan: ${datos.nombre}</small>
+                        <small>Estado: ${estado}</small>
+                    </div>
+                    <div class="code-info">
+                        <span>${datos.premios.length} Premio(s)</span>
+                        <small>${datos.premios.join(', ')}</small>
+                    </div>
+                    <div style="text-align: center;">
+                        <strong>${datos.premios.length}</strong><br>
+                        <small>Tiradas</small>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 5px;">
+                        ${botones}
+                    </div>
                 `;
                 lista.appendChild(div);
             });
+        }
+
+        function reactivarCodigo(codigo) {
+            if (confirm(`¿Estás segura de reactivar el código "${codigo}"?`)) {
+                const codigos = cargarCodigos();
+                if (codigos[codigo]) {
+                    codigos[codigo].usado = false;
+                    guardarCodigos(codigos);
+                    actualizarListaCodigos();
+                    actualizarEstadisticas();
+                }
+            }
         }
 
         function eliminarCodigo(codigo) {
@@ -588,8 +640,9 @@
 
         function actualizarEstadisticas() {
             const codigos = cargarCodigos();
-            const totalCodigos = Object.keys(codigos).length;
-            const totalTiradas = Object.values(codigos).reduce((acc, val) => acc + val.premios.length, 0);
+            const codigosActivos = Object.values(codigos).filter(codigo => !codigo.usado);
+            const totalCodigos = codigosActivos.length;
+            const totalTiradas = codigosActivos.reduce((acc, val) => acc + val.premios.length, 0);
             
             document.getElementById('totalCodes').textContent = totalCodigos;
             document.getElementById('totalPremios').textContent = totalTiradas;
