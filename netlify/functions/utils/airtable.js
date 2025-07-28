@@ -1,28 +1,29 @@
 const Airtable = require('airtable');
 
-// Cargar variables de entorno
-const AIRTABLE_BASE_ID = process.env.AIRTABLE_BASE_ID;
-const AIRTABLE_TABLE_NAME = process.env.AIRTABLE_TABLE_NAME || 'Codigos';
-const AIRTABLE_API_KEY = process.env.AIRTABLE_API_KEY;
+const {
+    AIRTABLE_API_KEY,
+    AIRTABLE_BASE_ID,
+    AIRTABLE_TABLE_NAME
+} = process.env;
 
-// Validar que las variables de entorno están configuradas
-if (!AIRTABLE_BASE_ID || !AIRTABLE_API_KEY) {
-    throw new Error('Las variables de entorno AIRTABLE_BASE_ID y AIRTABLE_API_KEY son requeridas');
+if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE_NAME) {
+    throw new Error('Las variables de entorno de Airtable son requeridas.');
 }
 
-// Configurar Airtable
-Airtable.configure({
-    endpointUrl: 'https://api.airtable.com',
-    apiKey: AIRTABLE_API_KEY
-});
+Airtable.configure({ apiKey: AIRTABLE_API_KEY });
 
-// Inicializar la base y tabla
 const base = Airtable.base(AIRTABLE_BASE_ID);
 const table = base(AIRTABLE_TABLE_NAME);
 
-// NUEVO: Funciones de ayuda para conversión de premios
-const premiosStringToArray = (premiosStr) => (premiosStr || '').split(',').map(p => p.trim()).filter(Boolean);
-const premiosArrayToString = (premiosArr) => (premiosArr || []).join(', ');
+const premiosStringToArray = (premiosStr) => {
+    if (!premiosStr || typeof premiosStr !== 'string') return [];
+    return premiosStr.split(',').map(p => p.trim()).filter(Boolean);
+};
+
+const premiosArrayToString = (premiosArr) => {
+    if (!premiosArr || !Array.isArray(premiosArr)) return '';
+    return premiosArr.join(', ');
+};
 
 module.exports = { 
     table, 

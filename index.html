@@ -366,7 +366,6 @@
             const validarBtn = document.getElementById('validarBtn');
             const codigo = codigoInput.value.trim().toUpperCase();
 
-            // Validar que el usuario haya ingresado un código
             if (!codigo) {
                 mostrarMensaje("❌ Por favor ingresa un código.");
                 codigoInput.style.animation = 'shake 0.5s ease-in-out';
@@ -374,33 +373,27 @@
                 return;
             }
 
-            // Deshabilitar botón durante la validación
             validarBtn.disabled = true;
             validarBtn.textContent = '⏳ Validando...';
             mostrarMensaje("🔍 Validando tu código...");
 
             try {
-                // Llamar al backend para validar el código
                 const response = await fetch('/.netlify/functions/validate-code', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ codigoId: codigo })
+                    body: JSON.stringify({ codigo: codigo })
                 });
 
                 const result = await response.json();
 
-                if (response.status === 200 && result.success) {
-                    // Código válido y disponible
+                if (result.valido) {
                     const datosCodigo = result.data;
                     
                     codigoActual = codigo;
-                    nombreUsuario = datosCodigo.nombre;
-                    
-                    // Manejar premios como array o string
-                    const premiosArray = Array.isArray(datosCodigo.premios) ? datosCodigo.premios : [datosCodigo.premios];
-                    premiosActuales = [...premiosArray.filter(p => p)]; // Filtrar elementos vacíos
+                    nombreUsuario = datosCodigo.nombreFan;
+                    premiosActuales = [...datosCodigo.premios];
                     tiradasRestantes = premiosActuales.length;
                     
                     mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
@@ -412,21 +405,8 @@
                     validarBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
                     validarBtn.textContent = '✅ Código Válido';
                     
-                } else if (response.status === 403) {
-                    // Código ya usado/expirado (sincronizado con backend)
-                    mostrarMensaje("❌ Este código ya ha sido utilizado y ha expirado.");
-                    codigoInput.style.animation = 'shake 0.5s ease-in-out';
-                    setTimeout(() => { codigoInput.style.animation = ''; }, 500);
-                    
-                } else if (response.status === 404) {
-                    // Código no encontrado
-                    mostrarMensaje("❌ Código inválido. Inténtalo de nuevo.");
-                    codigoInput.style.animation = 'shake 0.5s ease-in-out';
-                    setTimeout(() => { codigoInput.style.animation = ''; }, 500);
-                    
                 } else {
-                    // Otro tipo de error
-                    mostrarMensaje("❌ Error al validar el código. Inténtalo de nuevo.");
+                    mostrarMensaje(`❌ ${result.error}`);
                     codigoInput.style.animation = 'shake 0.5s ease-in-out';
                     setTimeout(() => { codigoInput.style.animation = ''; }, 500);
                 }
@@ -437,7 +417,6 @@
                 codigoInput.style.animation = 'shake 0.5s ease-in-out';
                 setTimeout(() => { codigoInput.style.animation = ''; }, 500);
             } finally {
-                // Reactivar botón si no fue exitoso
                 if (validarBtn.textContent !== '✅ Código Válido') {
                     validarBtn.disabled = false;
                     validarBtn.textContent = '✨ Validar Código ✨';
