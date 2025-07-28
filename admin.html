@@ -378,6 +378,81 @@
             transform: none !important;
         }
 
+        /* Estilos para gestión de premios */
+        .premio-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: linear-gradient(45deg, #ff6b9d, #c44569);
+            color: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .premio-item:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+
+        .premio-nombre {
+            font-weight: 600;
+            font-size: 1rem;
+            flex: 1;
+        }
+
+        .premio-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .premio-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            min-width: 80px;
+        }
+
+        .premio-btn:hover {
+            background: rgba(255,255,255,0.3);
+            transform: scale(1.05);
+        }
+
+        .premio-btn.edit {
+            background: rgba(52, 152, 219, 0.8);
+        }
+
+        .premio-btn.edit:hover {
+            background: rgba(52, 152, 219, 1);
+        }
+
+        .premio-btn.delete {
+            background: rgba(231, 76, 60, 0.8);
+        }
+
+        .premio-btn.delete:hover {
+            background: rgba(231, 76, 60, 1);
+        }
+
+        .premio-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        #addPremioBtn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         @media (max-width: 768px) {
             .admin-sections {
                 grid-template-columns: 1fr;
@@ -470,6 +545,17 @@
                     <!-- Los códigos se mostrarán aquí -->
                 </div>
             </div>
+
+            <div class="codes-list">
+                <h2>🎯 Gestionar Premios de la Ruleta</h2>
+                <div style="margin-bottom: 20px; display: flex; gap: 10px; align-items: center;">
+                    <input type="text" id="nuevoPremio" placeholder="Nombre del nuevo premio..." style="flex: 1; padding: 12px; border: 2px solid #ff6b9d; border-radius: 10px; font-size: 1rem;">
+                    <button id="addPremioBtn" class="btn" style="width: auto; padding: 12px 25px; white-space: nowrap;">➕ Añadir Premio</button>
+                </div>
+                <div id="premiosList" style="display: flex; flex-direction: column; gap: 10px;">
+                    <!-- Los premios se mostrarán aquí -->
+                </div>
+            </div>
         </div>
     </div>
 
@@ -515,12 +601,196 @@
     <script>
         // Credenciales de acceso removidas - ahora se validan en el backend
         
-        const premiosDisponibles = [
-            "🔥 SEXTING 15 MINUTOS", "📸 PACK FOTOS HOT", "🎬 PACK VIDEOS HOT", 
-            "🎁 PREMIO SORPRESA", "💋 VIDEO LESBICO EXCLUSIVO", "📱 VIDEOLLAMADA 5 MINUTOS", 
-            "🍷 UNA CENA CONMIGO", "💌 DICKRATE TEXTO", "🎥 DICKRATE EN VIDEO",
-            "🎵 AUDIO EXCLUSIVO PARA TI", "💰 DESCUENTO 40% EN MI CONTENIDO"
-        ];
+        // Variable global para almacenar los premios cargados dinámicamente
+        let premiosDisponibles = [];
+        
+        // === GESTIÓN DINÁMICA DE PREMIOS ===
+        async function cargarYMostrarPremios() {
+            try {
+                const response = await fetch('/.netlify/functions/get-premios');
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Error al cargar premios');
+                }
+                
+                // Actualizar variable global
+                premiosDisponibles = result.data.map(p => p.nombre);
+                
+                // Mostrar premios en la lista de gestión
+                mostrarPremiosEnLista(result.data);
+                
+                // Actualizar selector de premios para crear códigos
+                actualizarSelectorPremios(result.data);
+                
+                // Actualizar estado del botón de añadir
+                actualizarEstadoBotonAñadir(result.data.length);
+                
+                return result.data;
+                
+            } catch (error) {
+                console.error('Error al cargar premios:', error);
+                mostrarNotificacion('Error al cargar premios. Intenta recargar la página.', 'error');
+                return [];
+            }
+        }
+        
+        function mostrarPremiosEnLista(premios) {
+            const lista = document.getElementById('premiosList');
+            
+            if (premios.length === 0) {
+                lista.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No hay premios configurados aún.</p>';
+                return;
+            }
+            
+            lista.innerHTML = '';
+            premios.forEach(premio => {
+                const div = document.createElement('div');
+                div.className = 'premio-item';
+                div.innerHTML = `
+                    <span class="premio-nombre">${premio.nombre}</span>
+                    <div class="premio-actions">
+                        <button class="premio-btn edit" onclick="editarPremio('${premio.id}', '${premio.nombre.replace(/'/g, "\\'")}')">✏️ Editar</button>
+                        <button class="premio-btn delete" onclick="eliminarPremio('${premio.id}', '${premio.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
+                    </div>
+                `;
+                lista.appendChild(div);
+            });
+        }
+        
+        function actualizarSelectorPremios(premios) {
+            const selector = document.getElementById('premioSelector');
+            selector.innerHTML = '';
+            
+            premios.forEach((premio, index) => {
+                const div = document.createElement('div');
+                div.className = 'premio-item';
+                div.innerHTML = `
+                    <input type="checkbox" id="premio_${index}" value="${premio.nombre}">
+                    <label for="premio_${index}">${premio.nombre}</label>
+                `;
+                selector.appendChild(div);
+            });
+        }
+        
+        function actualizarEstadoBotonAñadir(cantidadPremios) {
+            const btn = document.getElementById('addPremioBtn');
+            const input = document.getElementById('nuevoPremio');
+            
+            if (cantidadPremios >= 10) {
+                btn.disabled = true;
+                btn.textContent = '� Límite alcanzado (10/10)';
+                input.disabled = true;
+                input.placeholder = 'Límite de 10 premios alcanzado';
+            } else {
+                btn.disabled = false;
+                btn.textContent = `➕ Añadir Premio (${cantidadPremios}/10)`;
+                input.disabled = false;
+                input.placeholder = 'Nombre del nuevo premio...';
+            }
+        }
+        
+        async function añadirPremio() {
+            const input = document.getElementById('nuevoPremio');
+            const btn = document.getElementById('addPremioBtn');
+            const nombre = input.value.trim();
+            
+            if (!nombre) {
+                mostrarNotificacion('Por favor, ingresa un nombre para el premio.', 'error');
+                return;
+            }
+            
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Añadiendo... ✨';
+            
+            try {
+                const response = await fetch('/.netlify/functions/add-premio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ nombre })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    input.value = '';
+                    await cargarYMostrarPremios();
+                    mostrarNotificacion('Premio añadido exitosamente', 'success');
+                } else {
+                    mostrarNotificacion(result.message || 'Error al añadir premio', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al añadir premio:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+        
+        async function editarPremio(id, nombreActual) {
+            const nuevoNombre = prompt('Editar premio:', nombreActual);
+            
+            if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre.trim() === nombreActual) {
+                return; // Cancelado o sin cambios
+            }
+            
+            try {
+                const response = await fetch('/.netlify/functions/edit-premio', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id, nuevoNombre: nuevoNombre.trim() })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    await cargarYMostrarPremios();
+                    mostrarNotificacion('Premio editado exitosamente', 'success');
+                } else {
+                    mostrarNotificacion(result.message || 'Error al editar premio', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al editar premio:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            }
+        }
+        
+        async function eliminarPremio(id, nombre) {
+            const confirmed = await mostrarConfirmacion(`¿Estás segura de eliminar el premio "${nombre}"? Esta acción no se puede deshacer.`);
+            
+            if (!confirmed) return;
+            
+            try {
+                const response = await fetch('/.netlify/functions/delete-premio', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ id })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    await cargarYMostrarPremios();
+                    mostrarNotificacion('Premio eliminado exitosamente', 'success');
+                } else {
+                    mostrarNotificacion(result.message || 'Error al eliminar premio', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al eliminar premio:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            }
+        }
         
         // === SISTEMA DE NOTIFICACIONES ===
         function mostrarNotificacion(mensaje, tipo = 'success') {
@@ -674,13 +944,26 @@
         // --- INICIO DE LA SOLUCIÓN AL BUG DE CARGA ---
 
         // Función que inicializa todo el contenido dinámico del panel.
-        function inicializarPanel() {
+        async function inicializarPanel() {
             const container = document.querySelector('.container');
             container.style.display = 'block'; // Hacemos visible el panel
             
-            inicializarPremioSelector();
+            // Cargar premios dinámicamente PRIMERO
+            await cargarYMostrarPremios();
+            
+            // Ahora inicializar el selector de premios con los datos cargados
             document.getElementById('numTiradas').addEventListener('change', manejarCambioTiradas);
             document.getElementById('numTiradas').addEventListener('input', manejarCambioTiradas);
+            
+            // Event listeners para gestión de premios
+            document.getElementById('addPremioBtn').addEventListener('click', añadirPremio);
+            document.getElementById('nuevoPremio').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    añadirPremio();
+                }
+            });
+            
+            // Cargar códigos y estadísticas
             actualizarListaCodigos();
             actualizarEstadisticas();
             
@@ -770,21 +1053,6 @@
             
             document.querySelector('button[onclick="selectAllPremios()"]').style.display = isSingleSpin ? 'none' : 'block';
             document.querySelector('button[onclick="clearAllPremios()"]').style.display = isSingleSpin ? 'none' : 'block';
-        }
-
-        function inicializarPremioSelector() {
-            const selector = document.getElementById('premioSelector');
-            selector.innerHTML = '';
-            
-            premiosDisponibles.forEach((premio, index) => {
-                const div = document.createElement('div');
-                div.className = 'premio-item';
-                div.innerHTML = `
-                    <input type="checkbox" id="premio_${index}" value="${premio}">
-                    <label for="premio_${index}">${premio}</label>
-                `;
-                selector.appendChild(div);
-            });
         }
 
         function selectAllPremios() {

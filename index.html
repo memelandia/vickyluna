@@ -276,11 +276,8 @@
     </div>
 
     <script>
-        const premiosDisponibles = [
-            "🔥 SEXTING 15 MINUTOS", "📸 PACK FOTOS HOT", "🎬 PACK VIDEOS HOT", "🎁 PREMIO SORPRESA", 
-            "💋 VIDEO LESBICO EXCLUSIVO", "📱 VIDEOLLAMADA 5 MINUTOS", "🍷 UNA CENA CONMIGO", "💌 DICKRATE TEXTO", 
-            "🎥 DICKRATE EN VIDEO", "🎵 AUDIO EXCLUSIVO PARA TI", "💰 DESCUENTO 40% EN MI CONTENIDO"
-        ];
+        // Variables globales para premios dinámicos
+        let premiosDisponibles = [];
         const coloresPremios = [ "#ff6b9d", "#c44569", "#f8b500", "#ff9ff3", "#54a0ff", "#5f27cd", "#ff9f43", "#10ac84", "#ee5a24", "#0abde3", "#feca57", "#ff6348" ];
         
         // Eliminado: const codigosValidosDefault - ahora usamos solo el backend
@@ -365,7 +362,26 @@
         }
         */
 
-        function dibujarRuletaCompleta() {
+        async function dibujarRuletaCompleta() {
+            // Cargar premios dinámicamente desde el backend
+            try {
+                const response = await fetch('/.netlify/functions/get-premios');
+                const result = await response.json();
+                
+                if (response.ok && result.success && result.data.length > 0) {
+                    // Actualizar variable global con los premios del backend
+                    premiosDisponibles = result.data.map(p => p.nombre);
+                } else {
+                    console.error('Error al cargar premios o no hay premios configurados');
+                    mostrarNotificacion('No se pudieron cargar los premios. Contacta al administrador.', 'error');
+                    return;
+                }
+            } catch (error) {
+                console.error('Error al cargar premios:', error);
+                mostrarNotificacion('Error de conexión al cargar premios. Verifica tu internet.', 'error');
+                return;
+            }
+            
             const canvas = document.getElementById('opciones');
             const ctx = canvas.getContext('2d');
             const total = premiosDisponibles.length;
@@ -621,9 +637,9 @@
             }, 500);
         }
 
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
             // Eliminado: cargarCodigosPersonalizados() - ahora usamos solo el backend
-            dibujarRuletaCompleta();
+            await dibujarRuletaCompleta(); // Ahora es asíncrona para cargar premios dinámicamente
         });
         
         document.getElementById('validarBtn').addEventListener('click', validarCodigo);
