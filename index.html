@@ -123,9 +123,114 @@
         
         @media (max-width: 480px) { #ruleta { width: 320px; height: 320px; } }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        
+        /* === SISTEMA DE NOTIFICACIONES === */
+        .notification-banner {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            z-index: 10000;
+            display: none;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .notification-banner.show {
+            transform: translateY(0);
+        }
+
+        .notification-banner.success {
+            background: linear-gradient(135deg, #5cb85c, #449d44);
+        }
+
+        .notification-banner.error {
+            background: linear-gradient(135deg, #d9534f, #c9302c);
+        }
+
+        .notification-banner.warning {
+            background: linear-gradient(135deg, #f0ad4e, #ec971f);
+        }
+
+        .notification-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .notification-text {
+            color: white;
+            font-weight: 600;
+            font-size: 1rem;
+            flex-grow: 1;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 1.5rem;
+            font-weight: bold;
+            cursor: pointer;
+            padding: 0 10px;
+            opacity: 0.8;
+            transition: opacity 0.3s ease;
+        }
+
+        .notification-close:hover {
+            opacity: 1;
+        }
+
+        /* === INDICADORES DE CARGA === */
+        .loading {
+            position: relative;
+            pointer-events: none;
+        }
+
+        .loading::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            width: 20px;
+            height: 20px;
+            margin: -10px 0 0 -10px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 2px solid transparent;
+            border-top-color: currentColor;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 8px;
+        }
     </style>
 </head>
 <body>
+    <!-- Banner de notificaciones -->
+    <div id="notification-banner" class="notification-banner">
+        <div class="notification-content">
+            <span class="notification-text"></span>
+            <button class="notification-close" onclick="cerrarNotificacion()">×</button>
+        </div>
+    </div>
+    
     <div class="background-shapes">
         <div class="shape"></div> <div class="shape"></div> <div class="shape"></div> <div class="shape"></div>
         <div class="particle heart" style="top: 15%; left: 8%;">💖</div> <div class="particle heart" style="top: 25%; right: 12%; animation-delay: 2s;">💕</div>
@@ -190,6 +295,38 @@
         const soundClick = new Audio('sounds/click.wav');
         const soundWin = new Audio('sounds/win.wav');
         const soundSpin = new Audio('sounds/spin.wav');
+        
+        // === SISTEMA DE NOTIFICACIONES ===
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const banner = document.getElementById('notification-banner');
+            const textElement = banner.querySelector('.notification-text');
+            
+            // Configurar el mensaje
+            textElement.textContent = mensaje;
+            
+            // Limpiar clases anteriores y añadir la nueva
+            banner.className = `notification-banner ${tipo}`;
+            
+            // Mostrar con animación
+            banner.style.display = 'flex';
+            setTimeout(() => {
+                banner.classList.add('show');
+            }, 10);
+            
+            // Auto-ocultar después de 4 segundos
+            setTimeout(() => {
+                cerrarNotificacion();
+            }, 4000);
+        }
+        
+        function cerrarNotificacion() {
+            const banner = document.getElementById('notification-banner');
+            banner.classList.remove('show');
+            
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 400);
+        }
         
         // Comentada: función cargarCodigosPersonalizados() - ahora usamos el backend
         /*
@@ -316,6 +453,12 @@
 
         async function girarRuleta() {
             if (tiradasRestantes <= 0 || premiosActuales.length === 0) return;
+            
+            // Configurar estado de carga del botón
+            const girarBtn = document.getElementById('girarBtn');
+            girarBtn.disabled = true;
+            girarBtn.textContent = 'Girando... 🎲';
+            
             soundSpin.loop = true;
             soundSpin.play();
             const indiceGanadorEnPool = Math.floor(Math.random() * premiosActuales.length);
@@ -323,7 +466,7 @@
             const indiceEnRuletaCompleta = premiosDisponibles.findIndex(p => p === premioGanado);
 
             if (indiceEnRuletaCompleta === -1) {
-                alert("Error de configuración.");
+                mostrarNotificacion("Error de configuración. Por favor, intenta de nuevo.", "error");
                 soundSpin.pause();
                 return;
             }
@@ -358,19 +501,32 @@
                     });
                     
                     const result = await response.json();
-                    console.log('Tiro gastado:', result);
+                    if (response.ok && result.success) {
+                        console.log('Tiro gastado exitosamente:', result);
+                        // Actualizar tiradasRestantes con la información del backend
+                        if (result.tiradasRestantes !== undefined) {
+                            tiradasRestantes = result.tiradasRestantes;
+                        }
+                    } else {
+                        console.error('Error al gastar tiro:', result.message);
+                        mostrarNotificacion('Hubo un problema al registrar tu tirada. Contacta a soporte si persiste.', 'warning');
+                    }
                 } catch (error) {
-                    console.error('Error al gastar tiro:', error);
+                    console.error('Error de conexión al gastar tiro:', error);
+                    mostrarNotificacion('Error de conexión al registrar la tirada. Tu premio sigue siendo válido.', 'warning');
                 }
                 
                 if (tiradasRestantes > 0) {
                     setTimeout(() => {
-                        document.getElementById('girarBtn').disabled = false;
+                        const girarBtn = document.getElementById('girarBtn');
+                        girarBtn.disabled = false;
+                        girarBtn.textContent = '✨ Girar Ruleta ✨';
                         mostrarMensaje(`✨ ¡Tienes ${tiradasRestantes} tirada(s) más! Sigue participando 🌟`);
                     }, 3000);
                 } else {
                     setTimeout(() => {
                         mostrarMensaje(`🌟 ¡Gracias por participar ${nombreUsuario}! Ha sido una experiencia mágica 💖`);
+                        mostrarNotificacion(`¡Gracias por participar, ${nombreUsuario}! 🌟`, 'success');
                     }, 3000);
                 }
             }, 5200);
@@ -412,6 +568,7 @@
                     premiosActuales = [...datosCodigo.premios];
                     tiradasRestantes = datosCodigo.tiradasRestantes;
                     
+                    mostrarNotificacion(`¡Bienvenida ${nombreUsuario}! Código válido con ${tiradasRestantes} tirada(s) 🎉`, 'success');
                     mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
                     document.getElementById('girarBtn').disabled = false;
                     codigoInput.disabled = true;
@@ -422,6 +579,7 @@
                     validarBtn.textContent = '✅ Código Válido';
                     
                 } else {
+                    mostrarNotificacion(`${result.message || 'Código no válido o sin tiradas disponibles'}`, 'error');
                     mostrarMensaje(`❌ ${result.message || 'Error al validar el código'}`);
                     codigoInput.style.animation = 'shake 0.5s ease-in-out';
                     setTimeout(() => { codigoInput.style.animation = ''; }, 500);
@@ -429,6 +587,7 @@
 
             } catch (error) {
                 console.error('Error de conexión al validar código:', error);
+                mostrarNotificacion("Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.", 'error');
                 mostrarMensaje("❌ Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.");
                 codigoInput.style.animation = 'shake 0.5s ease-in-out';
                 setTimeout(() => { codigoInput.style.animation = ''; }, 500);

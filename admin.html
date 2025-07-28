@@ -341,6 +341,43 @@
             transform: scale(1.1);
         }
 
+        /* Indicadores de Carga */
+        .loading-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #ff6b9d;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 15px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-weight: 600;
+            font-size: 1.1rem;
+            color: #c44569;
+        }
+
+        .btn.loading {
+            opacity: 0.7;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
         @media (max-width: 768px) {
             .admin-sections {
                 grid-template-columns: 1fr;
@@ -521,6 +558,123 @@
             }, 400);
         }
         
+        // === SISTEMA DE CONFIRMACIÓN PERSONALIZADA ===
+        function mostrarConfirmacion(mensaje, onConfirm, onCancel = null) {
+            return new Promise((resolve) => {
+                const confirmDiv = document.createElement('div');
+                confirmDiv.style.cssText = `
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    background: rgba(0,0,0,0.7);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 10000;
+                    opacity: 0;
+                    transition: opacity 0.3s ease;
+                `;
+                
+                confirmDiv.innerHTML = `
+                    <div style="
+                        background: white;
+                        padding: 30px;
+                        border-radius: 15px;
+                        box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+                        max-width: 400px;
+                        width: 90%;
+                        text-align: center;
+                        transform: translateY(-20px);
+                        transition: transform 0.3s ease;
+                    ">
+                        <div style="
+                            font-size: 2rem;
+                            margin-bottom: 15px;
+                        ">⚠️</div>
+                        <div style="
+                            font-size: 1.1rem;
+                            margin-bottom: 25px;
+                            color: #333;
+                            line-height: 1.4;
+                        ">${mensaje}</div>
+                        <div style="
+                            display: flex;
+                            gap: 15px;
+                            justify-content: center;
+                        ">
+                            <button class="cancel-btn" style="
+                                padding: 12px 24px;
+                                border: 2px solid #ddd;
+                                background: white;
+                                color: #666;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: 600;
+                                transition: all 0.3s ease;
+                            ">Cancelar</button>
+                            <button class="confirm-btn" style="
+                                padding: 12px 24px;
+                                border: none;
+                                background: #ff4757;
+                                color: white;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: 600;
+                                transition: all 0.3s ease;
+                            ">Confirmar</button>
+                        </div>
+                    </div>
+                `;
+                
+                document.body.appendChild(confirmDiv);
+                
+                // Animación de entrada
+                setTimeout(() => {
+                    confirmDiv.style.opacity = '1';
+                    confirmDiv.querySelector('div > div').style.transform = 'translateY(0)';
+                }, 10);
+                
+                // Event listeners
+                const cancelBtn = confirmDiv.querySelector('.cancel-btn');
+                const confirmBtn = confirmDiv.querySelector('.confirm-btn');
+                
+                cancelBtn.addEventListener('click', () => {
+                    closeConfirm(false);
+                });
+                
+                confirmBtn.addEventListener('click', () => {
+                    closeConfirm(true);
+                });
+                
+                // Cerrar con ESC
+                const handleKeydown = (e) => {
+                    if (e.key === 'Escape') {
+                        closeConfirm(false);
+                    }
+                };
+                document.addEventListener('keydown', handleKeydown);
+                
+                function closeConfirm(result) {
+                    confirmDiv.style.opacity = '0';
+                    confirmDiv.querySelector('div > div').style.transform = 'translateY(-20px)';
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(confirmDiv);
+                        document.removeEventListener('keydown', handleKeydown);
+                        resolve(result);
+                        
+                        if (result && onConfirm) {
+                            onConfirm();
+                        } else if (!result && onCancel) {
+                            onCancel();
+                        }
+                    }, 300);
+                }
+            });
+        }
+        
         // --- INICIO DE LA SOLUCIÓN AL BUG DE CARGA ---
 
         // Función que inicializa todo el contenido dinámico del panel.
@@ -616,6 +770,10 @@
         document.getElementById('createCodeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
+            // Obtener el botón y configurar estado de carga
+            const submitBtn = this.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            
             const codigo = document.getElementById('customCode').value.trim().toUpperCase();
             const nombre = document.getElementById('fanName').value.trim();
             const tiradas = parseInt(document.getElementById('numTiradas').value);
@@ -635,6 +793,10 @@
             }
             
             try {
+                // Configurar estado de carga
+                submitBtn.disabled = true;
+                submitBtn.textContent = 'Creando... ✨';
+                
                 // Enviar datos al backend (que maneja create/update automáticamente)
                 const response = await fetch('/.netlify/functions/create-code', {
                     method: 'POST',
@@ -670,6 +832,10 @@
             } catch (error) {
                 console.error('Error al crear/actualizar código:', error);
                 mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
+            } finally {
+                // Restaurar estado del botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
 
@@ -677,8 +843,13 @@
             const lista = document.getElementById('codesList');
             
             try {
-                // Mostrar indicador de carga
-                lista.innerHTML = '<p style="text-align: center; color: #666;">Cargando códigos...</p>';
+                // Mostrar indicador de carga con spinner
+                lista.innerHTML = `
+                    <div class="loading-container">
+                        <div class="spinner"></div>
+                        <div class="loading-text">Cargando códigos...</div>
+                    </div>
+                `;
                 
                 // Obtener códigos del backend
                 const response = await fetch('/.netlify/functions/get-all-codes');
@@ -702,9 +873,9 @@
                     
                     const estado = codigo.usado ? 'Gastado' : 'Activo';
                     const botones = codigo.usado 
-                        ? `<button class="delete-btn reactivate-btn action-btn" onclick="reactivarCodigo('${codigo.codigoId}')">🔄 Reactivar</button>
-                           <button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo.codigoId}')">🗑️ Eliminar</button>`
-                        : `<button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo.codigoId}')">🗑️ Eliminar</button>`;
+                        ? `<button class="delete-btn reactivate-btn action-btn" data-codigo="${codigo.codigoId}" data-action="reactivar" id="reactivar-${codigo.codigoId}">🔄 Reactivar</button>
+                           <button class="delete-btn action-btn" data-codigo="${codigo.codigoId}" data-action="eliminar" id="eliminar-${codigo.codigoId}">🗑️ Eliminar</button>`
+                        : `<button class="delete-btn action-btn" data-codigo="${codigo.codigoId}" data-action="eliminar" id="eliminar-${codigo.codigoId}">🗑️ Eliminar</button>`;
                     
                     // Manejar premios como array o string
                     const premiosArray = Array.isArray(codigo.premios) ? codigo.premios : [codigo.premios];
@@ -731,62 +902,117 @@
                     lista.appendChild(div);
                 });
                 
+                // Añadir event listeners para los botones de acción
+                setupActionButtons();
+                
             } catch (error) {
                 console.error('Error al cargar códigos:', error);
-                lista.innerHTML = '<p style="text-align: center; color: #ff4757;">Error al cargar códigos. Intenta recargar la página.</p>';
+                lista.innerHTML = `
+                    <div class="loading-container">
+                        <div style="color: #ff4757; font-size: 2rem; margin-bottom: 10px;">⚠️</div>
+                        <div style="color: #ff4757; font-weight: 600;">Error al cargar códigos</div>
+                        <div style="color: #666; font-size: 0.9rem; margin-top: 5px;">Intenta recargar la página</div>
+                    </div>
+                `;
             }
         }
-
-        async function reactivarCodigo(codigo) {
-            if (confirm(`¿Estás segura de reactivar el código "${codigo}"?`)) {
-                try {
-                    const response = await fetch('/.netlify/functions/reactivate-code', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ codigoId: codigo })
-                    });
-
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success) {
-                        await actualizarListaCodigos();
-                        await actualizarEstadisticas();
-                        mostrarNotificacion('Código reactivado exitosamente', 'success');
-                    } else {
-                        mostrarNotificacion(`Error: ${result.message || 'No se pudo reactivar el código'}`, 'error');
+        
+        function setupActionButtons() {
+            // Event listeners para botones de reactivar
+            document.querySelectorAll('[data-action="reactivar"]').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const codigo = this.getAttribute('data-codigo');
+                    const confirmed = await mostrarConfirmacion(`¿Estás segura de reactivar el código "${codigo}"?`);
+                    if (confirmed) {
+                        await reactivarCodigo(codigo, this);
                     }
-                } catch (error) {
-                    console.error('Error al reactivar código:', error);
-                    mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
+                });
+            });
+            
+            // Event listeners para botones de eliminar
+            document.querySelectorAll('[data-action="eliminar"]').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const codigo = this.getAttribute('data-codigo');
+                    const confirmed = await mostrarConfirmacion(`¿Estás segura de eliminar el código "${codigo}"? Esta acción no se puede deshacer.`);
+                    if (confirmed) {
+                        await eliminarCodigo(codigo, this);
+                    }
+                });
+            });
+        }
+
+        async function reactivarCodigo(codigo, button = null) {
+            try {
+                // Configurar estado de carga si se proporciona el botón
+                if (button) {
+                    const originalText = button.textContent;
+                    button.disabled = true;
+                    button.textContent = 'Reactivando... ✨';
+                }
+                
+                const response = await fetch('/.netlify/functions/reactivate-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codigoId: codigo })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    await actualizarListaCodigos();
+                    await actualizarEstadisticas();
+                    mostrarNotificacion('Código reactivado exitosamente', 'success');
+                } else {
+                    mostrarNotificacion(`Error: ${result.message || 'No se pudo reactivar el código'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al reactivar código:', error);
+                mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
+            } finally {
+                // Restaurar estado del botón si se proporciona
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = '🔄 Reactivar';
                 }
             }
         }
 
-        async function eliminarCodigo(codigo) {
-            if (confirm(`¿Estás segura de eliminar el código "${codigo}"?`)) {
-                try {
-                    const response = await fetch('/.netlify/functions/delete-code', {
-                        method: 'DELETE',
-                        headers: {
-                            'Content-Type': 'application/json',
-                        },
-                        body: JSON.stringify({ codigoId: codigo })
-                    });
+        async function eliminarCodigo(codigo, button = null) {
+            try {
+                // Configurar estado de carga si se proporciona el botón
+                if (button) {
+                    const originalText = button.textContent;
+                    button.disabled = true;
+                    button.textContent = 'Eliminando... ✨';
+                }
+                
+                const response = await fetch('/.netlify/functions/delete-code', {
+                    method: 'DELETE',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codigoId: codigo })
+                });
 
-                    const result = await response.json();
-                    
-                    if (response.ok && result.success) {
-                        await actualizarListaCodigos();
-                        await actualizarEstadisticas();
-                        mostrarNotificacion('Código eliminado exitosamente', 'success');
-                    } else {
-                        mostrarNotificacion(`Error: ${result.message || 'No se pudo eliminar el código'}`, 'error');
-                    }
-                } catch (error) {
-                    console.error('Error al eliminar código:', error);
-                    mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    await actualizarListaCodigos();
+                    await actualizarEstadisticas();
+                    mostrarNotificacion('Código eliminado exitosamente', 'success');
+                } else {
+                    mostrarNotificacion(`Error: ${result.message || 'No se pudo eliminar el código'}`, 'error');
+                }
+            } catch (error) {
+                console.error('Error al eliminar código:', error);
+                mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
+            } finally {
+                // Restaurar estado del botón si se proporciona
+                if (button) {
+                    button.disabled = false;
+                    button.textContent = '🗑️ Eliminar';
                 }
             }
         }
