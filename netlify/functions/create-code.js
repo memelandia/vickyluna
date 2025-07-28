@@ -1,7 +1,7 @@
 const { table } = require('./utils/airtable');
 
 exports.handler = async (event, context) => {
-    // Configurar headers CORS
+    // Configurar headers CORS (esto está bien como lo tenías)
     const headers = {
         'Access-Control-Allow-Origin': '*',
         'Access-Control-Allow-Headers': 'Content-Type',
@@ -46,46 +46,64 @@ exports.handler = async (event, context) => {
 
         // Verificar si el código ya existe
         const existingRecords = await table.select({
+            maxRecords: 1, // Más eficiente, solo necesitamos saber si existe al menos uno
             filterByFormula: `{ID} = "${codigoId}"`
-        }).all();
+        }).firstPage();
 
         if (existingRecords.length > 0) {
             return {
-                statusCode: 409,
+                statusCode: 409, // 409 Conflict es más semántico para "ya existe"
                 headers,
                 body: JSON.stringify({
                     success: false,
                     error: 'Código duplicado',
-                    message: `El código ${codigoId} ya existe`
+                    message: `El código ${codigoId} ya existe. No se puede crear de nuevo. Bórralo o reactívalo.`
                 })
             };
         }
 
-        // Crear el nuevo registro
-        const newRecord = await table.create([
+        // ==============================================================
+        // ===              INICIO DE LA CORRECCIÓN CLAVE             ===
+        // ==============================================================
+
+        // 1. Convertimos el array de premios en un string simple separado por comas.
+        //    Airtable en un campo de texto no entiende arrays, pero sí entiende este formato.
+        const premiosAsString = premios.join(', ');
+
+        // 2. Preparamos los datos para enviar. Usamos los nombres exactos de las columnas de Airtable.
+        const fieldsToCreate = {
+            'ID': codigoId,
+            'Nombre Fan': nombreFan,
+            'Premios': premiosAsString, // Enviamos el string convertido
+            'Usado': false
+            // La fecha de creación es manejada automáticamente por Airtable si la columna existe.
+        };
+
+        // Crear el nuevo registro usando la estructura correcta
+        const newRecords = await table.create([
             {
-                fields: {
-                    'ID': codigoId,
-                    'Nombre Fan': nombreFan,
-                    'Premios': premios,
-                    'Usado': false,
-                    'Fecha Creacion': new Date().toISOString()
-                }
+                fields: fieldsToCreate
             }
         ]);
 
-        // Formatear la respuesta
+        const newRecord = newRecords[0];
+
+        // ==============================================================
+        // ===                FIN DE LA CORRECCIÓN CLAVE              ===
+        // ==============================================================
+        
+        // Formatear la respuesta (igual que lo tenías, adaptado a la nueva forma de recibir premios)
         const createdCode = {
-            id: newRecord[0].id,
-            codigoId: newRecord[0].get('ID'),
-            nombre: newRecord[0].get('Nombre Fan'),
-            premios: newRecord[0].get('Premios'),
-            usado: newRecord[0].get('Usado'),
-            fechaCreacion: newRecord[0].get('Fecha Creacion')
+            id: newRecord.id,
+            codigoId: newRecord.get('ID'),
+            nombre: newRecord.get('Nombre Fan'),
+            // Como Airtable nos devuelve un string, lo devolvemos como un array para mantener la consistencia
+            premios: newRecord.get('Premios').split(', '), 
+            usado: newRecord.get('Usado'),
         };
 
         return {
-            statusCode: 201,
+            statusCode: 201, // 201 Created es el código estándar para creación exitosa
             headers,
             body: JSON.stringify({
                 success: true,
