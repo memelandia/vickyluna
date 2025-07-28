@@ -163,6 +163,7 @@
         let premiosActuales = [];
         let tiradasRestantes = 0;
         let nombreUsuario = "";
+        let codigoActual = "";
 
         const soundClick = new Audio('sounds/click.wav');
         const soundWin = new Audio('sounds/win.wav');
@@ -175,6 +176,17 @@
                 Object.assign(todosLosCodigos, JSON.parse(codigosGuardados));
             }
             codigosValidos = todosLosCodigos;
+        }
+
+        function marcarCodigoComoUsado(codigo) {
+            const codigosGuardados = localStorage.getItem('codigosPersonalizados');
+            if (codigosGuardados) {
+                const codigos = JSON.parse(codigosGuardados);
+                if (codigos[codigo]) {
+                    codigos[codigo].usado = true;
+                    localStorage.setItem('codigosPersonalizados', JSON.stringify(codigos));
+                }
+            }
         }
 
         function dibujarRuletaCompleta() {
@@ -302,6 +314,8 @@
                         mostrarMensaje(`✨ ¡Tienes ${tiradasRestantes} tirada(s) más! Sigue participando 🌟`);
                     }, 3000);
                 } else {
+                    // Marcar el código como usado antes de mostrar el mensaje final
+                    marcarCodigoComoUsado(codigoActual);
                     setTimeout(() => {
                         mostrarMensaje(`🌟 ¡Gracias por participar ${nombreUsuario}! Ha sido una experiencia mágica 💖`);
                     }, 3000);
@@ -315,9 +329,23 @@
             const validarBtn = document.getElementById('validarBtn');
             const codigo = codigoInput.value.trim().toUpperCase();
 
+            // Recargar códigos para tener la información más reciente
+            cargarCodigosPersonalizados();
+
             if (codigosValidos[codigo]) {
-                nombreUsuario = codigosValidos[codigo].nombre;
-                premiosActuales = [...codigosValidos[codigo].premios];
+                const datosCodigo = codigosValidos[codigo];
+                
+                // Verificar si el código ya fue usado
+                if (datosCodigo.usado) {
+                    mostrarMensaje("❌ Este código ya ha sido utilizado y ha expirado.");
+                    codigoInput.style.animation = 'shake 0.5s ease-in-out';
+                    setTimeout(() => { codigoInput.style.animation = ''; }, 500);
+                    return;
+                }
+
+                codigoActual = codigo;
+                nombreUsuario = datosCodigo.nombre;
+                premiosActuales = [...datosCodigo.premios];
                 tiradasRestantes = premiosActuales.length;
                 
                 mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
