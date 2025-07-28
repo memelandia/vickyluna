@@ -20,9 +20,27 @@ Airtable.configure({
 const base = Airtable.base(AIRTABLE_BASE_ID);
 const table = base(AIRTABLE_TABLE_NAME);
 
-// Exportar la instancia de la tabla para uso en otras funciones
+// Función utilitaria para convertir premios de string a array
+function premiosStringToArray(premiosString) {
+    if (!premiosString || typeof premiosString !== 'string') {
+        return [];
+    }
+    return premiosString.split(', ').filter(premio => premio.trim() !== '');
+}
+
+// Función utilitaria para convertir premios de array a string
+function premiosArrayToString(premiosArray) {
+    if (!Array.isArray(premiosArray)) {
+        return '';
+    }
+    return premiosArray.filter(premio => premio && premio.trim() !== '').join(', ');
+}
+
+// Exportar la instancia de la tabla y utilidades para uso en otras funciones
 module.exports = {
     table,
     base,
-    AIRTABLE_TABLE_NAME
+    AIRTABLE_TABLE_NAME,
+    premiosStringToArray,
+    premiosArrayToString
 };

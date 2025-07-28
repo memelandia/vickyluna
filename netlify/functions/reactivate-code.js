@@ -1,4 +1,4 @@
-const { table } = require('./utils/airtable');
+const { table, premiosStringToArray } = require('./utils/airtable');
 
 exports.handler = async (event, context) => {
     // Configurar headers CORS
@@ -93,9 +93,10 @@ exports.handler = async (event, context) => {
             id: updatedRecord[0].id,
             codigoId: updatedRecord[0].get('ID'),
             nombre: updatedRecord[0].get('Nombre Fan'),
-            premios: updatedRecord[0].get('Premios'),
+            premios: premiosStringToArray(updatedRecord[0].get('Premios')),
             usado: updatedRecord[0].get('Usado'),
-            fechaCreacion: updatedRecord[0].get('Fecha Creacion')
+            fechaCreacion: updatedRecord[0].get('Fecha Creacion'),
+            fechaUso: updatedRecord[0].get('Fecha Uso')
         };
 
         return {

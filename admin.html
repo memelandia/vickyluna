@@ -561,7 +561,7 @@
             }
             
             try {
-                // Enviar datos al backend
+                // Enviar datos al backend (que maneja create/update automáticamente)
                 const response = await fetch('/.netlify/functions/create-code', {
                     method: 'POST',
                     headers: {
@@ -581,23 +581,20 @@
                     this.reset();
                     clearAllPremios();
                     
-                    // Actualizar la vista
+                    // Actualizar la vista con datos frescos del backend
                     await actualizarListaCodigos();
                     await actualizarEstadisticas();
-                    mostrarMensajeExito();
+                    
+                    // Mostrar mensaje apropiado según si fue creación o actualización
+                    const mensaje = result.operation === 'update' 
+                        ? `Código "${codigo}" actualizado exitosamente`
+                        : `Código "${codigo}" creado exitosamente`;
+                    alert(mensaje);
                 } else {
-                    // Manejar errores específicos
-                    if (response.status === 409) {
-                        if (confirm(`${result.message}. ¿Deseas continuar de todas formas?`)) {
-                            // Si el usuario confirma, podrías implementar lógica adicional aquí
-                            alert('Funcionalidad de reemplazo no implementada aún.');
-                        }
-                    } else {
-                        alert(`Error: ${result.message || 'No se pudo crear el código'}`);
-                    }
+                    alert(`Error: ${result.message || 'No se pudo procesar el código'}`);
                 }
             } catch (error) {
-                console.error('Error al crear código:', error);
+                console.error('Error al crear/actualizar código:', error);
                 alert('Error de conexión. Por favor, intenta de nuevo.');
             }
         });
@@ -735,8 +732,8 @@
                 
                 // Calcular total de tiradas de códigos activos
                 const totalTiradas = codigosActivos.reduce((acc, codigo) => {
-                    const premiosArray = Array.isArray(codigo.premios) ? codigo.premios : [codigo.premios];
-                    return acc + premiosArray.filter(p => p).length;
+                    // Los premios ahora siempre vienen como array del backend
+                    return acc + (codigo.premios ? codigo.premios.length : 0);
                 }, 0);
                 
                 document.getElementById('totalCodes').textContent = totalCodigos;

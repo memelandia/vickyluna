@@ -1,4 +1,4 @@
-const { table } = require('./utils/airtable');
+const { table, premiosStringToArray } = require('./utils/airtable');
 
 exports.handler = async (event, context) => {
     // Configurar headers CORS
@@ -30,20 +30,26 @@ exports.handler = async (event, context) => {
     try {
         // Obtener todos los registros de la tabla
         const records = await table.select({
-            // Opcional: puedes añadir filtros aquí si es necesario
-            // filterByFormula: '{Usado} = FALSE()'
+            // Ordenar por fecha de creación más reciente primero
+            sort: [{ field: 'Fecha Creacion', direction: 'desc' }]
         }).all();
 
         // Formatear los registros para el frontend
-        const formattedCodes = records.map(record => ({
-            id: record.id, // ID interno de Airtable
-            codigoId: record.get('ID'), // Campo ID personalizado
-            nombre: record.get('Nombre Fan'),
-            premios: record.get('Premios') || [],
-            usado: record.get('Usado') || false,
-            fechaCreacion: record.get('Fecha Creacion'),
-            fechaUso: record.get('Fecha Uso')
-        }));
+        const formattedCodes = records.map(record => {
+            // Obtener el string de premios de Airtable y convertirlo a array
+            const premiosString = record.get('Premios') || '';
+            const premiosArray = premiosStringToArray(premiosString);
+
+            return {
+                id: record.id, // ID interno de Airtable
+                codigoId: record.get('ID'), // Campo ID personalizado
+                nombre: record.get('Nombre Fan') || '',
+                premios: premiosArray, // Array de premios convertido desde string
+                usado: record.get('Usado') || false,
+                fechaCreacion: record.get('Fecha Creacion'),
+                fechaUso: record.get('Fecha Uso')
+            };
+        });
 
         return {
             statusCode: 200,
