@@ -44,15 +44,16 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // PASO 1: Buscar el registro usando nuestro ID personalizado
-        console.log(`Buscando código: ${codigoId}`);
-        const searchRecords = await table.select({
-            maxRecords: 1, // Solo necesitamos uno
+        console.log(`Expirando código: ${codigoId}`);
+
+        // Buscar el registro en Airtable usando filterByFormula
+        const records = await table.select({
+            maxRecords: 1,
             filterByFormula: `{ID} = "${codigoId}"`
         }).firstPage();
 
-        // Verificar si el código existe
-        if (searchRecords.length === 0) {
+        // Si no se encuentra el código, devolver error 404
+        if (records.length === 0) {
             console.log(`Código ${codigoId} no encontrado`);
             return {
                 statusCode: 404,
@@ -65,17 +66,17 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // PASO 2: Obtener el registro encontrado y su ID interno de Airtable
-        const foundRecord = searchRecords[0];
+        // Obtener el registro encontrado y su ID interno de Airtable
+        const foundRecord = records[0];
         const airtableInternalId = foundRecord.id; // Este es el ID interno (rec...)
         
-        console.log(`Código encontrado. ID interno de Airtable: ${airtableInternalId}`);
+        console.log(`Código encontrado. Expirando inmediatamente...`);
 
-        // PASO 3: Actualizar el registro a usado (sin preguntas, siempre cumplir la orden)
-        console.log(`Expirando código ${codigoId} - marcando como usado`);
+        // Llamar a table.update usando el ID interno para establecer Usado = true
+        // SIN PREGUNTAS - cumplir la orden de expirar
         const updateResult = await table.update([
             {
-                id: airtableInternalId, // Usar el ID interno de Airtable
+                id: airtableInternalId,
                 fields: {
                     'Usado': true,
                     'Fecha Uso': new Date().toISOString()
@@ -83,13 +84,8 @@ exports.handler = async (event, context) => {
             }
         ]);
 
-        // Verificar que la actualización fue exitosa
-        if (!updateResult || updateResult.length === 0) {
-            throw new Error('La actualización no devolvió resultados');
-        }
-
         const updatedRecord = updateResult[0];
-        console.log(`Código ${codigoId} actualizado exitosamente`);
+        console.log(`Código ${codigoId} expirado exitosamente`);
 
         // Formatear la respuesta
         const expiredCode = {
@@ -106,7 +102,7 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 success: true,
-                message: `Código ${codigoId} marcado como usado exitosamente`,
+                message: `Código ${codigoId} expirado permanentemente`,
                 data: expiredCode
             })
         };

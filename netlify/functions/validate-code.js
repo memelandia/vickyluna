@@ -44,10 +44,11 @@ exports.handler = async (event, context) => {
             };
         }
 
-        // Buscar el código en Airtable usando filterByFormula
+        // Buscar el código en Airtable usando .firstPage() para mayor eficiencia
         const records = await table.select({
+            maxRecords: 1,
             filterByFormula: `{ID} = "${codigoId}"`
-        }).all();
+        }).firstPage();
 
         // Caso 1: Código no encontrado
         if (records.length === 0) {
@@ -65,7 +66,7 @@ exports.handler = async (event, context) => {
         const record = records[0];
         const usado = record.get('Usado');
 
-        // Caso 2: Código ya usado
+        // Caso 2: Código ya usado - statusCode 403 exacto
         if (usado === true) {
             return {
                 statusCode: 403,
@@ -73,13 +74,13 @@ exports.handler = async (event, context) => {
                 body: JSON.stringify({
                     success: false,
                     error: 'Código expirado',
-                    message: 'Este código ya ha sido utilizado y ha expirado',
+                    message: `El código ${codigoId} ya ha sido utilizado y ha expirado`,
                     fechaUso: record.get('Fecha Uso')
                 })
             };
         }
 
-        // Caso 3: Código válido y disponible
+        // Caso 3: Código válido y disponible - usar premiosStringToArray
         const validCode = {
             id: record.id,
             codigoId: record.get('ID'),
@@ -94,7 +95,7 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 success: true,
-                message: 'Código válido',
+                message: 'Código válido y disponible',
                 data: validCode
             })
         };

@@ -20,27 +20,12 @@ Airtable.configure({
 const base = Airtable.base(AIRTABLE_BASE_ID);
 const table = base(AIRTABLE_TABLE_NAME);
 
-// Función utilitaria para convertir premios de string a array
-function premiosStringToArray(premiosString) {
-    if (!premiosString || typeof premiosString !== 'string') {
-        return [];
-    }
-    return premiosString.split(', ').map(p => p.trim()).filter(premio => premio !== '');
-}
+// NUEVO: Funciones de ayuda para conversión de premios
+const premiosStringToArray = (premiosStr) => (premiosStr || '').split(',').map(p => p.trim()).filter(Boolean);
+const premiosArrayToString = (premiosArr) => (premiosArr || []).join(', ');
 
-// Función utilitaria para convertir premios de array a string
-function premiosArrayToString(premiosArray) {
-    if (!Array.isArray(premiosArray)) {
-        return '';
-    }
-    return premiosArray.filter(premio => premio && premio.trim() !== '').join(', ');
-}
-
-// Exportar la instancia de la tabla y utilidades para uso en otras funciones
-module.exports = {
-    table,
-    base,
-    AIRTABLE_TABLE_NAME,
-    premiosStringToArray,
-    premiosArrayToString
+module.exports = { 
+    table, 
+    premiosStringToArray, 
+    premiosArrayToString 
 };
