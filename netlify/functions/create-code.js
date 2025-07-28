@@ -83,7 +83,6 @@ exports.handler = async (event, context) => {
                         'Nombre Fan': nombreFan,
                         'Premios': premiosString,
                         'Usado': false,
-                        'Fecha Creacion': new Date().toISOString()
                     }
                 }
             ]);
