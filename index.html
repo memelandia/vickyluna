@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Scarlet Lucy - Ruleta Interactiva</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Dancing+Script:wght@400;700&family=Poppins:wght@300;400;600;700&display=swap');
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            font-family: 'Poppins', sans-serif; text-align: center; min-height: 100vh;
+            background: linear-gradient(-45deg, #ff9a9e, #fecfef, #fecfef, #ff9a9e);
+            background-size: 400% 400%; animation: gradientMove 15s ease infinite;
+            position: relative; overflow-x: hidden;
+        }
+        @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
+        .particle { position: absolute; pointer-events: none; opacity: 0.6; animation: floatParticle 8s ease-in-out infinite; }
+        .particle.heart { font-size: 20px; color: #ff6b9d; animation: floatHeart 10s ease-in-out infinite; }
+        .particle.sparkle { width: 8px; height: 8px; background: radial-gradient(circle, #feca57, #ff9ff3); border-radius: 50%; animation: floatSparkle 6s ease-in-out infinite; }
+        .particle.star { font-size: 16px; color: #c44569; animation: floatStar 12s ease-in-out infinite; }
+        @keyframes floatParticle {
+            0%, 100% { transform: translateY(0px) translateX(0px) rotate(0deg); opacity: 0.3; }
+            25% { transform: translateY(-30px) translateX(15px) rotate(90deg); opacity: 0.7; }
+            50% { transform: translateY(-20px) translateX(-10px) rotate(180deg); opacity: 0.5; }
+            75% { transform: translateY(-40px) translateX(20px) rotate(270deg); opacity: 0.8; }
+        }
+        @keyframes floatHeart {
+            0%, 100% { transform: translateY(0px) scale(1) rotate(0deg); opacity: 0.4; }
+            33% { transform: translateY(-50px) scale(1.2) rotate(15deg); opacity: 0.8; }
+            66% { transform: translateY(-30px) scale(0.8) rotate(-10deg); opacity: 0.6; }
+        }
+        @keyframes floatSparkle {
+            0%, 100% { transform: translateY(0px) scale(1); opacity: 0.5; box-shadow: 0 0 10px #feca57; }
+            50% { transform: translateY(-40px) scale(1.5); opacity: 1; box-shadow: 0 0 20px #ff9ff3; }
+        }
+        @keyframes floatStar {
+            0%, 100% { transform: translateY(0px) rotate(0deg) scale(1); opacity: 0.4; }
+            25% { transform: translateY(-35px) rotate(180deg) scale(1.1); opacity: 0.7; }
+            50% { transform: translateY(-60px) rotate(360deg) scale(0.9); opacity: 0.9; }
+            75% { transform: translateY(-25px) rotate(540deg) scale(1.2); opacity: 0.6; }
+        }
+        .shape { position: absolute; border-radius: 50%; opacity: 0.08; animation: float 8s ease-in-out infinite; }
+        .shape:nth-child(1) { width: 80px; height: 80px; background: #ff6b9d; top: 10%; left: 10%; }
+        .shape:nth-child(2) { width: 120px; height: 120px; background: #c44569; top: 20%; right: 15%; animation-delay: 2s; }
+        .shape:nth-child(3) { width: 60px; height: 60px; background: #f8b500; bottom: 20%; left: 20%; animation-delay: 4s; }
+        .shape:nth-child(4) { width: 100px; height: 100px; background: #ff6b9d; bottom: 10%; right: 10%; animation-delay: 1s; }
+        @keyframes float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(120deg); }
+            66% { transform: translateY(10px) rotate(240deg); }
+        }
+        .container {
+            position: relative; z-index: 1; padding: 20px; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; min-height: 100vh;
+            max-width: 1400px; margin: 0 auto; gap: 20px;
+        }
+        .main-content {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            width: 100%; max-width: 1200px; flex: 1; gap: 40px;
+        }
+        @media (min-width: 1024px) {
+            .main-content {
+                display: grid; grid-template-columns: 1fr auto 1fr;
+                align-items: center; gap: 60px;
+            }
+            .controls-container { grid-column: 1 / 2; justify-self: end; }
+            .ruleta-section { grid-column: 2 / 3; }
+        }
+        .controls-container { display: flex; flex-direction: column; align-items: center; gap: 25px; }
+        .ruleta-section { display: flex; flex-direction: column; align-items: center; gap: 30px; flex-shrink: 0; }
+        .controls-section {
+            display: flex; flex-direction: column; align-items: center; gap: 20px;
+            background: rgba(255, 255, 255, 0.95); padding: 35px; border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.1); backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2); width: 320px;
+        }
+        .controls-title { font-family: 'Dancing Script', cursive; color: #c44569; font-size: 2.5rem; font-weight: 700; text-shadow: 3px 3px 6px rgba(0,0,0,0.15); }
+        #ruleta { margin: 0 auto; width: 450px; height: 450px; border: 10px solid #c44569; border-radius: 50%; position: relative; box-shadow: 0 15px 30px rgba(0,0,0,0.2); }
+        #flecha { width: 0; height: 0; border-left: 25px solid transparent; border-right: 25px solid transparent; border-bottom: 50px solid #c44569; position: absolute; left: 50%; top: -50px; transform: translateX(-50%); z-index: 10; }
+        #opciones { position: absolute; width: 100%; height: 100%; top: 0; left: 0; pointer-events: none; border-radius: 50%; }
+        #mensaje { margin-top: 10px; font-size: 1rem; color: #c44569; font-weight: 600; background: rgba(255, 255, 255, 0.95); padding: 12px 20px; border-radius: 20px; display: inline-block; box-shadow: 0 6px 12px rgba(0,0,0,0.15); min-height: 35px; }
+        .form-title { font-family: 'Dancing Script', cursive; font-size: 1.5rem; color: #c44569; margin-bottom: 10px; }
+        #codigo { padding: 15px 20px; font-size: 0.95em; border: 3px solid #ff6b9d; border-radius: 20px; width: 100%; text-align: center; }
+        #validarBtn { padding: 15px 25px; font-size: 0.95em; background: linear-gradient(45deg, #ff6b9d, #c44569); color: white; border: none; border-radius: 20px; cursor: pointer; font-weight: 600; width: 100%; text-transform: uppercase; }
+        #girarBtn { padding: 18px 50px; font-size: 1.1rem; background: linear-gradient(45deg, #ff6b9d, #c44569, #ff6b9d); color: white; border: none; border-radius: 30px; cursor: pointer; font-weight: 700; min-width: 280px; }
+        #girarBtn:disabled { background: linear-gradient(45deg, #ccc, #999); cursor: not-allowed; }
+        .popup-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0, 0, 0, 0.8); display: flex; justify-content: center;
+            align-items: center; z-index: 1000; opacity: 0; visibility: hidden; transition: all 0.3s ease;
+        }
+        .popup-overlay.show { opacity: 1; visibility: visible; }
+        .popup-content {
+            background: linear-gradient(135deg, #ff6b9d, #c44569); border-radius: 30px; padding: 40px; text-align: center;
+            max-width: 500px; width: 90%; transform: scale(0.5); transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+        .popup-overlay.show .popup-content { transform: scale(1); }
+        .popup-title { font-family: 'Dancing Script', cursive; font-size: 3rem; color: white; margin-bottom: 20px; }
+        .popup-prize { font-size: 1.5rem; color: white; font-weight: 700; margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.2); border-radius: 15px; }
+        .popup-instructions { font-size: 0.9rem; color: white; opacity: 0.9; margin-top: 25px; font-weight: 500; }
+        .popup-close { background: white; color: #c44569; border: none; padding: 15px 30px; border-radius: 25px; font-weight: 700; font-size: 1.1rem; cursor: pointer; margin-top: 20px; }
+        @media (max-width: 480px) { #ruleta { width: 320px; height: 320px; } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+    </style>
+</head>
+<body>
+    <div class="background-shapes">
+        <div class="shape"></div> <div class="shape"></div> <div class="shape"></div> <div class="shape"></div>
+        <div class="particle heart" style="top: 15%; left: 8%;">💖</div> <div class="particle heart" style="top: 25%; right: 12%; animation-delay: 2s;">💕</div>
+        <div class="particle heart" style="bottom: 30%; left: 15%; animation-delay: 4s;">💗</div> <div class="particle heart" style="bottom: 15%; right: 8%; animation-delay: 6s;">💓</div>
+        <div class="particle star" style="top: 20%; left: 25%; animation-delay: 1s;">⭐</div> <div class="particle star" style="top: 70%; left: 30%; animation-delay: 5s;">✨</div>
+        <div class="particle sparkle" style="bottom: 20%; right: 40%; animation-delay: 1.5s;"></div> <div class="particle sparkle" style="top: 80%; right: 15%; animation-delay: 3.5s;"></div>
+    </div>
+
+    <div id="popup-overlay" class="popup-overlay">
+        <div class="popup-content">
+            <div class="popup-title">¡FELICITACIONES!</div>
+            <div id="popup-prize" class="popup-prize"></div>
+            <p class="popup-instructions">Recuerda enviarme una captura de pantalla para cobrar tu premio!</p>
+            <button id="popupCloseBtn" class="popup-close">✨ ¡Genial! ✨</button>
+        </div>
+    </div>
+    
+    <div class="container">
+        <div style="position: absolute; top: 20px; right: 20px; z-index: 100;">
+            <a href="admin.html" style="color: rgba(196, 69, 105, 0.4); text-decoration: none; font-size: 1.2em;">⚙️</a>
+        </div>
+        <div class="main-content">
+            <div class="controls-container">
+                <div class="controls-title">Scarlet Lucy</div>
+                <div class="controls-section">
+                    <div class="form-title">💝 Código Exclusivo</div>
+                    <div id="formulario">
+                        <input type="text" id="codigo" placeholder="Introduce tu código exclusivo" maxlength="20">
+                        <button id="validarBtn">✨ Validar Código ✨</button>
+                    </div>
+                </div>
+            </div>
+            <div class="ruleta-section">
+                <div id="ruleta">
+                    <div id="flecha"></div>
+                    <canvas id="opciones" width="450" height="450"></canvas>
+                </div>
+                <button id="girarBtn" disabled>🎯 ¡GIRAR RULETA! 🎯</button>
+            </div>
+        </div>
+        <div class="message-section">
+            <div id="mensaje">✨ Ingresa tu código para comenzar la experiencia mágica ✨</div>
+        </div>
+    </div>
+
+    <script>
+        const premiosDisponibles = [
+            "🔥 SEXTING 15 MINUTOS", "📸 PACK FOTOS HOT", "🎬 PACK VIDEOS HOT", "🎁 PREMIO SORPRESA", 
+            "💋 VIDEO LESBICO EXCLUSIVO", "📱 VIDEOLLAMADA 5 MINUTOS", "🍷 UNA CENA CONMIGO", "💌 DICKRATE TEXTO", 
+            "🎥 DICKRATE EN VIDEO", "🎵 AUDIO EXCLUSIVO PARA TI", "💰 DESCUENTO 40% EN MI CONTENIDO"
+        ];
+        const coloresPremios = [ "#ff6b9d", "#c44569", "#f8b500", "#ff9ff3", "#54a0ff", "#5f27cd", "#ff9f43", "#10ac84", "#ee5a24", "#0abde3", "#feca57", "#ff6348" ];
+        const codigosValidosDefault = { "OFERTA1": { nombre: "OFERTA1", premios: ["🔥 SEXTING 15 MINUTOS", "💋 VIDEO LESBICO EXCLUSIVO"]} };
+        
+        let codigosValidos = {};
+        let premiosActuales = [];
+        let tiradasRestantes = 0;
+        let nombreUsuario = "";
+
+        const soundClick = new Audio('sounds/click.wav');
+        const soundWin = new Audio('sounds/win.wav');
+        const soundSpin = new Audio('sounds/spin.wav');
+        
+        function cargarCodigosPersonalizados() {
+            let todosLosCodigos = {...codigosValidosDefault};
+            const codigosGuardados = localStorage.getItem('codigosPersonalizados');
+            if (codigosGuardados) {
+                Object.assign(todosLosCodigos, JSON.parse(codigosGuardados));
+            }
+            codigosValidos = todosLosCodigos;
+        }
+
+        function dibujarRuletaCompleta() {
+            const canvas = document.getElementById('opciones');
+            const ctx = canvas.getContext('2d');
+            const total = premiosDisponibles.length;
+            const radio = 220;
+            const centroX = 225;
+            const centroY = 225;
+            
+            ctx.clearRect(0, 0, 450, 450);
+
+            for (let i = 0; i < total; i++) {
+                const anguloInicio = (2 * Math.PI / total) * i;
+                const anguloFin = (2 * Math.PI / total) * (i + 1);
+                
+                ctx.save();
+                ctx.beginPath();
+                ctx.moveTo(centroX, centroY);
+                ctx.arc(centroX, centroY, radio, anguloInicio, anguloFin);
+                ctx.closePath();
+                ctx.fillStyle = coloresPremios[i % coloresPremios.length];
+                ctx.fill();
+                ctx.clip();
+                
+                ctx.fillStyle = "#ffffff";
+                const anguloMedio = (anguloInicio + anguloFin) / 2;
+                const distanciaTexto = radio * 0.65;
+                const textoX = centroX + Math.cos(anguloMedio) * distanciaTexto;
+                const textoY = centroY + Math.sin(anguloMedio) * distanciaTexto;
+                
+                ctx.translate(textoX, textoY);
+                let rotacion = anguloMedio;
+                if (rotacion > Math.PI/2 && rotacion < 3*Math.PI/2) rotacion += Math.PI;
+                ctx.rotate(rotacion);
+                
+                let textoLimpio = premiosDisponibles[i].replace(/[\u{1F300}-\u{1F9FF}]/gu, '').trim().toUpperCase();
+                const palabras = textoLimpio.split(' ');
+                let lineas = [], lineaActual = '';
+                palabras.forEach(palabra => {
+                    if ((lineaActual + palabra).length > 10 && lineaActual) {
+                        lineas.push(lineaActual.trim());
+                        lineaActual = palabra + ' ';
+                    } else {
+                        lineaActual += palabra + ' ';
+                    }
+                });
+                lineas.push(lineaActual.trim());
+
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.font = "bold 16px Poppins, sans-serif";
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 1;
+                ctx.shadowOffsetY = 1;
+                
+                const lineHeight = 18;
+                const startY = -(lineas.length - 1) * lineHeight / 2;
+                lineas.forEach((linea, index) => ctx.fillText(linea, 0, startY + (index * lineHeight)));
+                ctx.restore();
+            }
+            
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 3;
+            for (let i = 0; i < total; i++) {
+                const anguloFin = (2 * Math.PI / total) * (i + 1);
+                ctx.beginPath();
+                ctx.moveTo(centroX, centroY);
+                ctx.lineTo(centroX + radio * Math.cos(anguloFin), centroY + radio * Math.sin(anguloFin));
+                ctx.stroke();
+            }
+
+            ctx.beginPath();
+            ctx.arc(centroX, centroY, 40, 0, 2 * Math.PI);
+            ctx.fillStyle = "#c44569";
+            ctx.fill();
+            ctx.stroke();
+            
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 40px Poppins, sans-serif";
+            ctx.shadowColor = 'transparent';
+            ctx.textBaseline = "middle";
+            ctx.textAlign = "center";
+            ctx.fillText("💎", centroX, centroY + 4); // +4 para centrar visualmente el emoji
+        }
+
+        function girarRuleta() {
+            if (tiradasRestantes <= 0 || premiosActuales.length === 0) return;
+            soundSpin.loop = true;
+            soundSpin.play();
+            const indiceGanadorEnPool = Math.floor(Math.random() * premiosActuales.length);
+            const premioGanado = premiosActuales[indiceGanadorEnPool];
+            const indiceEnRuletaCompleta = premiosDisponibles.findIndex(p => p === premioGanado);
+
+            if (indiceEnRuletaCompleta === -1) {
+                alert("Error de configuración.");
+                soundSpin.pause();
+                return;
+            }
+            const anguloPorPremio = 360 / premiosDisponibles.length;
+            const anguloFinal = (360 * 6) + (indiceEnRuletaCompleta * anguloPorPremio) + (anguloPorPremio / 2);
+
+            const ruleta = document.getElementById('opciones');
+            ruleta.style.transition = "transform 5s cubic-bezier(.17,.67,.83,.67)";
+            ruleta.style.transform = `rotate(${anguloFinal}deg)`;
+            document.getElementById('girarBtn').disabled = true;
+            mostrarMensaje("🎯 ¡La ruleta está girando mágicamente! ✨");
+
+            setTimeout(() => {
+                soundSpin.pause();
+                soundSpin.currentTime = 0;
+                soundWin.play();
+
+                ruleta.style.transition = "";
+                ruleta.style.transform = `rotate(${ (indiceEnRuletaCompleta * anguloPorPremio) + (anguloPorPremio / 2) }deg)`;
+                mostrarPopupPremio(premioGanado);
+                mostrarMensaje(`🎉 ¡Felicidades ${nombreUsuario}! Ganaste: <b>${premioGanado}</b>`);
+                tiradasRestantes--;
+                premiosActuales.splice(indiceGanadorEnPool, 1);
+                
+                if (tiradasRestantes > 0 && premiosActuales.length > 0) {
+                    setTimeout(() => {
+                        document.getElementById('girarBtn').disabled = false;
+                        mostrarMensaje(`✨ ¡Tienes ${tiradasRestantes} tirada(s) más! Sigue participando 🌟`);
+                    }, 3000);
+                } else {
+                    setTimeout(() => {
+                        mostrarMensaje(`🌟 ¡Gracias por participar ${nombreUsuario}! Ha sido una experiencia mágica 💖`);
+                    }, 3000);
+                }
+            }, 5200);
+        }
+        
+        function validarCodigo() {
+            soundClick.play();
+            const codigoInput = document.getElementById('codigo');
+            const validarBtn = document.getElementById('validarBtn');
+            const codigo = codigoInput.value.trim().toUpperCase();
+
+            if (codigosValidos[codigo]) {
+                nombreUsuario = codigosValidos[codigo].nombre;
+                premiosActuales = [...codigosValidos[codigo].premios];
+                tiradasRestantes = premiosActuales.length;
+                
+                mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
+                document.getElementById('girarBtn').disabled = false;
+                codigoInput.disabled = true;
+                validarBtn.disabled = true;
+                
+                codigoInput.style.borderColor = '#10ac84';
+                validarBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
+                validarBtn.textContent = '✅ Código Válido';
+            } else {
+                mostrarMensaje("❌ Código inválido. Inténtalo de nuevo.");
+                codigoInput.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => { codigoInput.style.animation = ''; }, 500);
+            }
+        }
+        
+        function mostrarPopupPremio(premio) {
+            document.getElementById('popup-prize').textContent = premio;
+            document.getElementById('popup-overlay').classList.add('show');
+        }
+
+        function cerrarPopup() {
+            soundClick.play();
+            document.getElementById('popup-overlay').classList.remove('show');
+        }
+
+        function mostrarMensaje(msg) {
+            document.getElementById('mensaje').innerHTML = msg;
+        }
+
+        window.addEventListener('load', () => {
+            cargarCodigosPersonalizados();
+            dibujarRuletaCompleta();
+        });
+        
+        document.getElementById('validarBtn').addEventListener('click', validarCodigo);
+        document.getElementById('girarBtn').addEventListener('click', () => { soundClick.play(); girarRuleta(); });
+        document.getElementById('popupCloseBtn').addEventListener('click', cerrarPopup);
+        document.getElementById('codigo').addEventListener('keypress', e => { if (e.key === 'Enter') validarCodigo(); });
+    </script>
+</body>
+</html>
