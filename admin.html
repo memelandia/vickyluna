@@ -104,28 +104,60 @@
 
         .premio-selector {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 10px;
-            margin-top: 10px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
         }
 
         .premio-item {
             display: flex;
             align-items: center;
+            justify-content: center;
             gap: 8px;
-            background: rgba(255,255,255,0.1);
-            padding: 8px 12px;
-            border-radius: 10px;
+            background: rgba(255,255,255,0.15);
+            padding: 15px 20px;
+            border-radius: 12px;
+            cursor: pointer;
             transition: all 0.3s ease;
+            border: 2px solid transparent;
+            position: relative;
+            text-align: center;
+            font-weight: 600;
+            min-height: 60px;
+            user-select: none;
         }
 
         .premio-item:hover {
-            background: rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.25);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
         }
 
-        .premio-item input[type="checkbox"] {
-            width: auto;
-            transform: scale(1.2);
+        .premio-item.selected {
+            border: 3px solid white;
+            filter: brightness(1.2);
+            background: rgba(255,255,255,0.3);
+            box-shadow: 0 0 20px rgba(255,255,255,0.5);
+            transform: translateY(-3px);
+        }
+
+        .premio-item input[type="checkbox"],
+        .premio-item input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+            width: 0;
+            height: 0;
+        }
+
+        .premio-item label {
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            font-size: 1rem;
+            margin: 0;
+            width: 100%;
+            text-align: center;
         }
 
         .btn {
@@ -671,6 +703,46 @@
                 `;
                 selector.appendChild(div);
             });
+            
+            // Configurar eventos para las tarjetas seleccionables
+            setupPrizeSelectorEvents();
+        }
+        
+        function setupPrizeSelectorEvents() {
+            const premioItems = document.querySelectorAll('.premio-item');
+            
+            premioItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    // Evitar que el clic en el label dispare el evento dos veces
+                    e.preventDefault();
+                    
+                    const checkbox = this.querySelector('input');
+                    const tiradas = parseInt(document.getElementById('numTiradas').value);
+                    const isRadioMode = tiradas === 1;
+                    
+                    if (isRadioMode) {
+                        // Modo radio: deseleccionar todas las demás tarjetas
+                        premioItems.forEach(otherItem => {
+                            const otherCheckbox = otherItem.querySelector('input');
+                            otherCheckbox.checked = false;
+                            otherItem.classList.remove('selected');
+                        });
+                        
+                        // Seleccionar solo esta tarjeta
+                        checkbox.checked = true;
+                        this.classList.add('selected');
+                    } else {
+                        // Modo checkbox: alternar selección
+                        checkbox.checked = !checkbox.checked;
+                        
+                        if (checkbox.checked) {
+                            this.classList.add('selected');
+                        } else {
+                            this.classList.remove('selected');
+                        }
+                    }
+                });
+            });
         }
         
         function actualizarEstadoBotonAñadir(cantidadPremios) {
@@ -1041,26 +1113,55 @@
         function manejarCambioTiradas() {
             const tiradas = parseInt(document.getElementById('numTiradas').value);
             const checkboxes = document.querySelectorAll('#premioSelector input');
+            const premioItems = document.querySelectorAll('.premio-item');
             
             if (isNaN(tiradas) || checkboxes.length === 0) return;
             
             const isSingleSpin = tiradas === 1;
-            checkboxes.forEach(checkbox => {
+            
+            // Actualizar tipo de input y limpiar selecciones
+            checkboxes.forEach((checkbox, index) => {
                 checkbox.type = isSingleSpin ? 'radio' : 'checkbox';
                 checkbox.name = isSingleSpin ? 'premio_unico' : '';
-                if (isSingleSpin) checkbox.checked = false;
+                checkbox.checked = false;
+                
+                // Limpiar estado visual de las tarjetas
+                if (premioItems[index]) {
+                    premioItems[index].classList.remove('selected');
+                }
             });
             
-            document.querySelector('button[onclick="selectAllPremios()"]').style.display = isSingleSpin ? 'none' : 'block';
-            document.querySelector('button[onclick="clearAllPremios()"]').style.display = isSingleSpin ? 'none' : 'block';
+            // Mostrar/ocultar botones según el modo
+            const selectAllBtn = document.querySelector('button[onclick="selectAllPremios()"]');
+            const clearAllBtn = document.querySelector('button[onclick="clearAllPremios()"]');
+            
+            if (selectAllBtn) selectAllBtn.style.display = isSingleSpin ? 'none' : 'block';
+            if (clearAllBtn) clearAllBtn.style.display = isSingleSpin ? 'none' : 'block';
+            
+            // Reconfigurar eventos para el nuevo modo
+            setupPrizeSelectorEvents();
         }
 
         function selectAllPremios() {
-            document.querySelectorAll('#premioSelector input[type="checkbox"]').forEach(checkbox => checkbox.checked = true);
+            const premioItems = document.querySelectorAll('.premio-item');
+            premioItems.forEach(item => {
+                const checkbox = item.querySelector('input[type="checkbox"]');
+                if (checkbox) {
+                    checkbox.checked = true;
+                    item.classList.add('selected');
+                }
+            });
         }
 
         function clearAllPremios() {
-            document.querySelectorAll('#premioSelector input').forEach(checkbox => checkbox.checked = false);
+            const premioItems = document.querySelectorAll('.premio-item');
+            premioItems.forEach(item => {
+                const checkbox = item.querySelector('input');
+                if (checkbox) {
+                    checkbox.checked = false;
+                    item.classList.remove('selected');
+                }
+            });
         }
 
         function obtenerPremiosSeleccionados() {
