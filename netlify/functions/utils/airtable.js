@@ -25,7 +25,7 @@ function premiosStringToArray(premiosString) {
     if (!premiosString || typeof premiosString !== 'string') {
         return [];
     }
-    return premiosString.split(', ').filter(premio => premio.trim() !== '');
+    return premiosString.split(', ').map(p => p.trim()).filter(premio => premio !== '');
 }
 
 // Función utilitaria para convertir premios de array a string

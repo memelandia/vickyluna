@@ -412,8 +412,8 @@
                     validarBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
                     validarBtn.textContent = '✅ Código Válido';
                     
-                } else if (response.status === 409) {
-                    // Código ya usado/expirado
+                } else if (response.status === 403) {
+                    // Código ya usado/expirado (sincronizado con backend)
                     mostrarMensaje("❌ Este código ya ha sido utilizado y ha expirado.");
                     codigoInput.style.animation = 'shake 0.5s ease-in-out';
                     setTimeout(() => { codigoInput.style.animation = ''; }, 500);

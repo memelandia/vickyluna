@@ -71,26 +71,8 @@ exports.handler = async (event, context) => {
         
         console.log(`Código encontrado. ID interno de Airtable: ${airtableInternalId}`);
 
-        // Verificar el estado actual antes de actualizar
-        const currentStatus = foundRecord.get('Usado');
-        console.log(`Estado actual del código: ${currentStatus}`);
-
-        // Verificar si el código ya está usado
-        if (currentStatus === true) {
-            return {
-                statusCode: 409,
-                headers,
-                body: JSON.stringify({
-                    success: false,
-                    error: 'Código ya expirado',
-                    message: `El código ${codigoId} ya estaba marcado como usado`,
-                    fechaUso: foundRecord.get('Fecha Uso')
-                })
-            };
-        }
-
-        // PASO 3: Actualizar el registro usando el ID interno correcto
-        console.log(`Actualizando código ${codigoId} a estado usado`);
+        // PASO 3: Actualizar el registro a usado (sin preguntas, siempre cumplir la orden)
+        console.log(`Expirando código ${codigoId} - marcando como usado`);
         const updateResult = await table.update([
             {
                 id: airtableInternalId, // Usar el ID interno de Airtable
