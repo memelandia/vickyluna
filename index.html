@@ -9,11 +9,18 @@
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Poppins', sans-serif; text-align: center; min-height: 100vh;
-            background: linear-gradient(-45deg, #ff9a9e, #fecfef, #fecfef, #ff9a9e);
-            background-size: 400% 400%; animation: gradientMove 15s ease infinite;
+            background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab, #ff9a9e, #8a2be2);
+            background-size: 400% 400%; 
+            animation: gradientMove 10s ease-in-out infinite;
             position: relative; overflow-x: hidden;
         }
-        @keyframes gradientMove { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+        @keyframes gradientMove { 
+            0% { background-position: 0% 50%; } 
+            25% { background-position: 100% 50%; }
+            50% { background-position: 100% 100%; }
+            75% { background-position: 0% 100%; }
+            100% { background-position: 0% 50%; }
+        }
         .background-shapes { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: -1; }
         .particle { position: absolute; pointer-events: none; opacity: 0.6; animation: floatParticle 8s ease-in-out infinite; }
         .particle.heart { font-size: 20px; color: #ff6b9d; animation: floatHeart 10s ease-in-out infinite; }
@@ -40,15 +47,31 @@
             50% { transform: translateY(-60px) rotate(360deg) scale(0.9); opacity: 0.9; }
             75% { transform: translateY(-25px) rotate(540deg) scale(1.2); opacity: 0.6; }
         }
-        .shape { position: absolute; border-radius: 50%; opacity: 0.08; animation: float 8s ease-in-out infinite; }
+        /* === PARTÍCULAS REACTIVAS AL MOUSE === */
+        .mouse-particle {
+            position: fixed;
+            left: 0;
+            top: 0;
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            transition: transform 1s ease-out, opacity 1s ease-out;
+            z-index: 1;
+        }
+        
+        .shape { 
+            position: absolute; border-radius: 50%; opacity: 0.08; 
+            animation: float 15s ease-in-out infinite; 
+        }
         .shape:nth-child(1) { width: 80px; height: 80px; background: #ff6b9d; top: 10%; left: 10%; }
         .shape:nth-child(2) { width: 120px; height: 120px; background: #c44569; top: 20%; right: 15%; animation-delay: 2s; }
         .shape:nth-child(3) { width: 60px; height: 60px; background: #f8b500; bottom: 20%; left: 20%; animation-delay: 4s; }
         .shape:nth-child(4) { width: 100px; height: 100px; background: #ff6b9d; bottom: 10%; right: 10%; animation-delay: 1s; }
         @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(120deg); }
-            66% { transform: translateY(10px) rotate(240deg); }
+            0% { transform: translateY(0) rotate(0deg); }
+            33% { transform: translateY(-20px) rotate(45deg); }
+            66% { transform: translateY(15px) rotate(-30deg); }
+            100% { transform: translateY(0) rotate(0deg); }
         }
         .container {
             position: relative; z-index: 1; padding: 20px; display: flex; flex-direction: column;
@@ -487,10 +510,7 @@
     
     <div class="background-shapes">
         <div class="shape"></div> <div class="shape"></div> <div class="shape"></div> <div class="shape"></div>
-        <div class="particle heart" style="top: 15%; left: 8%;">💖</div> <div class="particle heart" style="top: 25%; right: 12%; animation-delay: 2s;">💕</div>
-        <div class="particle heart" style="bottom: 30%; left: 15%; animation-delay: 4s;">💗</div> <div class="particle heart" style="bottom: 15%; right: 8%; animation-delay: 6s;">💓</div>
-        <div class="particle star" style="top: 20%; left: 25%; animation-delay: 1s;">⭐</div> <div class="particle star" style="top: 70%; left: 30%; animation-delay: 5s;">✨</div>
-        <div class="particle sparkle" style="bottom: 20%; right: 40%; animation-delay: 1.5s;"></div> <div class="particle sparkle" style="top: 80%; right: 15%; animation-delay: 3.5s;"></div>
+        <!-- Partículas dinámicas se crearán por JavaScript -->
     </div>
 
     <div id="popup-overlay" class="popup-overlay">
@@ -927,6 +947,122 @@
             }, 500);
         }
 
+        // === FONDO INTERACTIVO REACTIVO AL MOUSE ===
+        function inicializarFondoInteractivo() {
+            const paleta = ['#ff6b9d', '#ffffff', '#f8b500', '#c44569', '#feca57', '#23a6d5', '#ff9a9e', '#8a2be2'];
+            let throttleTimer = null;
+            
+            // Efecto épico de bienvenida
+            crearExplosionBienvenida(paleta);
+            
+            document.addEventListener('mousemove', function(e) {
+                // Throttle para mejor rendimiento
+                if (throttleTimer) return;
+                
+                throttleTimer = setTimeout(() => {
+                    throttleTimer = null;
+                }, 50); // Crear partícula cada 50ms máximo
+                
+                crearParticulaMouse(e.clientX, e.clientY, paleta);
+            });
+        }
+        
+        function crearExplosionBienvenida(paleta) {
+            const centroX = window.innerWidth / 2;
+            const centroY = window.innerHeight / 2;
+            
+            // Crear 30 partículas desde el centro
+            for (let i = 0; i < 30; i++) {
+                setTimeout(() => {
+                    crearParticulaBienvenida(centroX, centroY, paleta, i);
+                }, i * 50); // Escalonar la creación
+            }
+        }
+        
+        function crearParticulaBienvenida(x, y, paleta, index) {
+            const particula = document.createElement('div');
+            particula.className = 'mouse-particle';
+            
+            // Tamaño más grande para el efecto de bienvenida
+            const tamaño = Math.random() * 30 + 10;
+            const color = paleta[Math.floor(Math.random() * paleta.length)];
+            
+            // Configurar estilos iniciales
+            particula.style.cssText = `
+                width: ${tamaño}px;
+                height: ${tamaño}px;
+                background: ${color};
+                left: ${x - tamaño/2}px;
+                top: ${y - tamaño/2}px;
+                box-shadow: 0 0 ${tamaño}px ${color};
+                opacity: 1;
+                z-index: 5;
+            `;
+            
+            document.body.appendChild(particula);
+            
+            // Animar hacia afuera en todas las direcciones
+            setTimeout(() => {
+                const angulo = (index / 30) * 2 * Math.PI;
+                const distancia = Math.random() * 300 + 200;
+                const moveX = Math.cos(angulo) * distancia;
+                const moveY = Math.sin(angulo) * distancia;
+                const scale = Math.random() * 1.5 + 0.5;
+                
+                particula.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale}) rotate(720deg)`;
+                particula.style.opacity = '0';
+            }, 100);
+            
+            // Limpiar después de la animación
+            setTimeout(() => {
+                if (particula.parentNode) {
+                    document.body.removeChild(particula);
+                }
+            }, 1500);
+        }
+        
+        function crearParticulaMouse(x, y, paleta) {
+            const particula = document.createElement('div');
+            particula.className = 'mouse-particle';
+            
+            // Tamaño aleatorio entre 5px y 25px
+            const tamaño = Math.random() * 20 + 5;
+            
+            // Color aleatorio de la paleta
+            const color = paleta[Math.floor(Math.random() * paleta.length)];
+            
+            // Configurar estilos iniciales
+            particula.style.cssText = `
+                width: ${tamaño}px;
+                height: ${tamaño}px;
+                background: ${color};
+                left: ${x - tamaño/2}px;
+                top: ${y - tamaño/2}px;
+                box-shadow: 0 0 ${tamaño/2}px ${color};
+                opacity: 0.8;
+            `;
+            
+            // Añadir al body
+            document.body.appendChild(particula);
+            
+            // Animar inmediatamente
+            setTimeout(() => {
+                const moveX = (Math.random() - 0.5) * 80; // Movimiento horizontal aleatorio
+                const moveY = (Math.random() - 0.5) * 80; // Movimiento vertical aleatorio
+                const scale = Math.random() * 2 + 0.5; // Escala final aleatoria
+                
+                particula.style.transform = `translate(${moveX}px, ${moveY}px) scale(${scale})`;
+                particula.style.opacity = '0';
+            }, 10);
+            
+            // Limpiar después de la animación
+            setTimeout(() => {
+                if (particula.parentNode) {
+                    document.body.removeChild(particula);
+                }
+            }, 1000);
+        }
+
         // === CARGA DE CONFIGURACIÓN VISUAL ===
         async function cargarConfiguracionVisual() {
             try {
@@ -959,6 +1095,9 @@
         window.addEventListener('load', async () => {
             // Cargar configuración visual (nombre y avatar)
             await cargarConfiguracionVisual();
+            
+            // Inicializar fondo interactivo reactivo al mouse
+            inicializarFondoInteractivo();
             
             // Eliminado: cargarCodigosPersonalizados() - ahora usamos solo el backend
             await dibujarRuletaCompleta(); // Ahora es asíncrona para cargar premios dinámicamente
