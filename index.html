@@ -383,12 +383,12 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify({ codigo: codigo })
+                    body: JSON.stringify({ codigoId: codigo })
                 });
 
                 const result = await response.json();
 
-                if (result.valido) {
+                if (response.status === 200 && result.success) {
                     const datosCodigo = result.data;
                     
                     codigoActual = codigo;
@@ -406,7 +406,7 @@
                     validarBtn.textContent = '✅ Código Válido';
                     
                 } else {
-                    mostrarMensaje(`❌ ${result.error}`);
+                    mostrarMensaje(`❌ ${result.message || 'Error al validar el código'}`);
                     codigoInput.style.animation = 'shake 0.5s ease-in-out';
                     setTimeout(() => { codigoInput.style.animation = ''; }, 500);
                 }
