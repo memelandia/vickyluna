@@ -513,12 +513,8 @@
     </div>
 
     <script>
-        // Credenciales de acceso
-        const ADMIN_CREDENTIALS = {
-            username: 'SCARLET',
-            password: 'LUCY2025'
-        };
-
+        // Credenciales de acceso removidas - ahora se validan en el backend
+        
         const premiosDisponibles = [
             "🔥 SEXTING 15 MINUTOS", "📸 PACK FOTOS HOT", "🎬 PACK VIDEOS HOT", 
             "🎁 PREMIO SORPRESA", "💋 VIDEO LESBICO EXCLUSIVO", "📱 VIDEOLLAMADA 5 MINUTOS", 
@@ -702,19 +698,55 @@
             }
         });
 
-        document.getElementById('loginForm').addEventListener('submit', function(e) {
+        document.getElementById('loginForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             const username = document.getElementById('username').value.trim().toUpperCase();
             const password = document.getElementById('password').value.trim();
+            const loginError = document.getElementById('loginError');
+            const submitBtn = this.querySelector('button[type="submit"]');
             
-            if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-                sessionStorage.setItem('adminAuthenticated', 'true');
-                document.getElementById('loginModal').style.display = 'none';
-                inicializarPanel(); // <--- CORRECCIÓN CLAVE: Inicializamos el panel JUSTO DESPUÉS del login.
-            } else {
-                const loginError = document.getElementById('loginError');
+            // Configurar estado de carga
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Verificando... 🔐';
+            loginError.style.display = 'none';
+            
+            try {
+                // Llamada al backend para autenticación
+                const response = await fetch('/.netlify/functions/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    // Login exitoso
+                    sessionStorage.setItem('adminAuthenticated', 'true');
+                    sessionStorage.setItem('adminUser', result.user);
+                    document.getElementById('loginModal').style.display = 'none';
+                    mostrarNotificacion(`¡Bienvenida ${result.user}! Acceso autorizado 🎉`, 'success');
+                    inicializarPanel(); // Inicializar el panel después del login exitoso
+                } else {
+                    // Credenciales incorrectas
+                    loginError.textContent = result.message || 'Credenciales incorrectas';
+                    loginError.style.display = 'block';
+                    document.getElementById('password').value = '';
+                    mostrarNotificacion('Credenciales incorrectas. Inténtalo de nuevo.', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error de conexión al hacer login:', error);
+                loginError.textContent = 'Error de conexión. Por favor, intenta de nuevo.';
                 loginError.style.display = 'block';
-                document.getElementById('password').value = '';
+                mostrarNotificacion('Error de conexión. Verifica tu internet e inténtalo de nuevo.', 'error');
+            } finally {
+                // Restaurar estado del botón
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
             }
         });
 
