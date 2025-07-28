@@ -589,6 +589,29 @@
                     <!-- Los premios se mostrarán aquí -->
                 </div>
             </div>
+
+            <div class="codes-list">
+                <h2>🎨 Personalización Visual</h2>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #c44569;">Nombre a mostrar en la ruleta:</label>
+                        <input type="text" id="nombreModeloInput" placeholder="Ej: Scarlet Lucy" maxlength="25" style="width: 100%; padding: 12px; border: 2px solid #ff6b9d; border-radius: 10px; font-size: 1rem; margin-bottom: 10px;">
+                        <button id="guardarNombreBtn" class="btn" style="width: 100%; padding: 12px 25px;">💎 Guardar Nombre</button>
+                    </div>
+                    <div>
+                        <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #c44569;">URL del Avatar:</label>
+                        <input type="url" id="avatarUrlInput" placeholder="https://ejemplo.com/avatar.jpg" style="width: 100%; padding: 12px; border: 2px solid #ff6b9d; border-radius: 10px; font-size: 1rem; margin-bottom: 10px;">
+                        <button id="guardarAvatarBtn" class="btn" style="width: 100%; padding: 12px 25px;">🖼️ Guardar Avatar</button>
+                    </div>
+                </div>
+                <div style="margin-top: 15px; padding: 15px; background: linear-gradient(135deg, #74b9ff, #0984e3); color: white; border-radius: 12px;">
+                    <h4 style="margin-bottom: 10px; font-family: 'Dancing Script', cursive; font-size: 1.3rem;">💡 Consejos:</h4>
+                    <ul style="margin: 0; padding-left: 20px; line-height: 1.6;">
+                        <li><strong>Nombre:</strong> Máximo 25 caracteres. Solo letras, números, espacios, guiones y puntos.</li>
+                        <li><strong>Avatar:</strong> Usa URLs de imágenes públicas (JPG, PNG, GIF). Tamaño recomendado: 200x200px.</li>
+                    </ul>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -636,6 +659,128 @@
         
         // Variable global para almacenar los premios cargados dinámicamente
         let premiosDisponibles = [];
+        
+        // === GESTIÓN DE CONFIGURACIÓN VISUAL ===
+        async function cargarConfiguracion() {
+            try {
+                const response = await fetch('/.netlify/functions/config-manager');
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Error al cargar configuración');
+                }
+                
+                // Actualizar campos de la interfaz
+                const nombreInput = document.getElementById('nombreModeloInput');
+                const avatarInput = document.getElementById('avatarUrlInput');
+                
+                if (nombreInput && result.data.nombreModelo) {
+                    nombreInput.value = result.data.nombreModelo;
+                }
+                
+                if (avatarInput && result.data.avatarURL) {
+                    avatarInput.value = result.data.avatarURL;
+                }
+                
+                return result.data;
+                
+            } catch (error) {
+                console.error('Error al cargar configuración:', error);
+                mostrarNotificacion('Error al cargar configuración visual. Algunos datos pueden no estar disponibles.', 'error');
+                return null;
+            }
+        }
+        
+        async function guardarNombreModelo() {
+            const input = document.getElementById('nombreModeloInput');
+            const btn = document.getElementById('guardarNombreBtn');
+            const nuevoNombre = input.value.trim();
+            
+            if (!nuevoNombre) {
+                mostrarNotificacion('Por favor, ingresa un nombre válido.', 'error');
+                return;
+            }
+            
+            // Validación del lado del cliente
+            if (nuevoNombre.length > 25) {
+                mostrarNotificacion('El nombre no puede tener más de 25 caracteres.', 'error');
+                return;
+            }
+            
+            if (!/^[a-zA-Z0-9\s\u00C0-\u017F\-\.]+$/.test(nuevoNombre)) {
+                mostrarNotificacion('El nombre contiene caracteres no permitidos. Solo se permiten letras, números, espacios, guiones y puntos.', 'error');
+                return;
+            }
+            
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Guardando... 💫';
+            
+            try {
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ nuevoNombreModelo: nuevoNombre })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    mostrarNotificacion('Nombre guardado exitosamente. Los cambios se verán en la ruleta.', 'success');
+                } else {
+                    mostrarNotificacion(result.message || 'Error al guardar el nombre', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al guardar nombre:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+        
+        async function guardarAvatarUrl() {
+            const input = document.getElementById('avatarUrlInput');
+            const btn = document.getElementById('guardarAvatarBtn');
+            const nuevaUrl = input.value.trim();
+            
+            if (nuevaUrl && !nuevaUrl.match(/^https?:\/\/.+\.(jpg|jpeg|png|gif|webp)(\?.*)?$/i)) {
+                mostrarNotificacion('Por favor, ingresa una URL válida de imagen (JPG, PNG, GIF, WEBP).', 'error');
+                return;
+            }
+            
+            const originalText = btn.textContent;
+            btn.disabled = true;
+            btn.textContent = 'Guardando... 💫';
+            
+            try {
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ nuevaAvatarURL: nuevaUrl })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    mostrarNotificacion('Avatar guardado exitosamente. Los cambios se verán en la ruleta.', 'success');
+                } else {
+                    mostrarNotificacion(result.message || 'Error al guardar el avatar', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al guardar avatar:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
         
         // === GESTIÓN DINÁMICA DE PREMIOS ===
         async function cargarYMostrarPremios() {
@@ -1021,10 +1166,13 @@
             const container = document.querySelector('.container');
             container.style.display = 'block'; // Hacemos visible el panel
             
-            // Cargar premios dinámicamente PRIMERO
+            // Cargar configuración visual PRIMERO
+            await cargarConfiguracion();
+            
+            // Cargar premios dinámicamente
             await cargarYMostrarPremios();
             
-            // Ahora inicializar el selector de premios con los datos cargados
+            // Inicializar el selector de premios con los datos cargados
             document.getElementById('numTiradas').addEventListener('change', manejarCambioTiradas);
             document.getElementById('numTiradas').addEventListener('input', manejarCambioTiradas);
             
@@ -1033,6 +1181,23 @@
             document.getElementById('nuevoPremio').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     añadirPremio();
+                }
+            });
+            
+            // Event listeners para personalización visual
+            document.getElementById('guardarNombreBtn').addEventListener('click', guardarNombreModelo);
+            document.getElementById('guardarAvatarBtn').addEventListener('click', guardarAvatarUrl);
+            
+            // Permitir guardar con Enter en los campos de texto
+            document.getElementById('nombreModeloInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    guardarNombreModelo();
+                }
+            });
+            
+            document.getElementById('avatarUrlInput').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    guardarAvatarUrl();
                 }
             });
             

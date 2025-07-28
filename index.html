@@ -254,7 +254,7 @@
         </div>
         <div class="main-content">
             <div class="controls-container">
-                <div class="controls-title">Scarlet Lucy</div>
+                <div class="controls-title" id="tituloModelo">Scarlet Lucy</div>
                 <div class="controls-section">
                     <div class="form-title">💝 Código Exclusivo</div>
                     <div id="formulario">
@@ -637,7 +637,39 @@
             }, 500);
         }
 
+        // === CARGA DE CONFIGURACIÓN VISUAL ===
+        async function cargarConfiguracionVisual() {
+            try {
+                const response = await fetch('/.netlify/functions/config-manager');
+                const result = await response.json();
+                
+                if (response.ok && result.success && result.data) {
+                    // Actualizar el nombre de la modelo
+                    if (result.data.nombreModelo) {
+                        const tituloElement = document.getElementById('tituloModelo');
+                        if (tituloElement) {
+                            tituloElement.textContent = result.data.nombreModelo;
+                        }
+                        
+                        // También actualizar el título de la página
+                        document.title = `${result.data.nombreModelo} - Ruleta Interactiva`;
+                    }
+                    
+                    // Aquí se puede añadir la lógica del avatar cuando sea necesaria
+                    // if (result.data.avatarURL) {
+                    //     // Implementar cuando tengamos el avatar en la interfaz
+                    // }
+                }
+            } catch (error) {
+                console.error('Error al cargar configuración visual:', error);
+                // No mostrar error al usuario, usar valores por defecto
+            }
+        }
+
         window.addEventListener('load', async () => {
+            // Cargar configuración visual (nombre y avatar)
+            await cargarConfiguracionVisual();
+            
             // Eliminado: cargarCodigosPersonalizados() - ahora usamos solo el backend
             await dibujarRuletaCompleta(); // Ahora es asíncrona para cargar premios dinámicamente
         });
