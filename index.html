@@ -178,9 +178,10 @@
             "🎥 DICKRATE EN VIDEO", "🎵 AUDIO EXCLUSIVO PARA TI", "💰 DESCUENTO 40% EN MI CONTENIDO"
         ];
         const coloresPremios = [ "#ff6b9d", "#c44569", "#f8b500", "#ff9ff3", "#54a0ff", "#5f27cd", "#ff9f43", "#10ac84", "#ee5a24", "#0abde3", "#feca57", "#ff6348" ];
-        const codigosValidosDefault = { "OFERTA1": { nombre: "OFERTA1", premios: ["🔥 SEXTING 15 MINUTOS", "💋 VIDEO LESBICO EXCLUSIVO"]} };
         
-        let codigosValidos = {};
+        // Eliminado: const codigosValidosDefault - ahora usamos solo el backend
+        // Eliminado: let codigosValidos = {} - ahora usamos solo el backend
+        
         let premiosActuales = [];
         let tiradasRestantes = 0;
         let nombreUsuario = "";
@@ -190,6 +191,8 @@
         const soundWin = new Audio('sounds/win.wav');
         const soundSpin = new Audio('sounds/spin.wav');
         
+        // Comentada: función cargarCodigosPersonalizados() - ahora usamos el backend
+        /*
         function cargarCodigosPersonalizados() {
             let todosLosCodigos = {...codigosValidosDefault};
             const codigosGuardados = localStorage.getItem('codigosPersonalizados');
@@ -198,15 +201,28 @@
             }
             codigosValidos = todosLosCodigos;
         }
+        */
 
-        function marcarCodigoComoUsado(codigo) {
-            const codigosGuardados = localStorage.getItem('codigosPersonalizados');
-            if (codigosGuardados) {
-                const codigos = JSON.parse(codigosGuardados);
-                if (codigos[codigo]) {
-                    codigos[codigo].usado = true;
-                    localStorage.setItem('codigosPersonalizados', JSON.stringify(codigos));
+        // Nueva función que usa el backend para marcar códigos como usados
+        async function marcarCodigoComoUsado(codigo) {
+            try {
+                const response = await fetch('/.netlify/functions/expire-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codigoId: codigo })
+                });
+
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    console.error('Error al marcar código como usado:', result.message);
+                    // No mostramos error al usuario para no interrumpir la experiencia
                 }
+            } catch (error) {
+                console.error('Error de conexión al marcar código como usado:', error);
+                // No mostramos error al usuario para no interrumpir la experiencia
             }
         }
 
@@ -295,7 +311,7 @@
             ctx.fillText("💎", centroX, centroY + 4); // +4 para centrar visualmente el emoji
         }
 
-        function girarRuleta() {
+        async function girarRuleta() {
             if (tiradasRestantes <= 0 || premiosActuales.length === 0) return;
             soundSpin.loop = true;
             soundSpin.play();
@@ -317,7 +333,7 @@
             document.getElementById('girarBtn').disabled = true;
             mostrarMensaje("🎯 ¡La ruleta está girando mágicamente! ✨");
 
-            setTimeout(() => {
+            setTimeout(async () => {
                 soundSpin.pause();
                 soundSpin.currentTime = 0;
                 soundWin.play();
@@ -336,7 +352,7 @@
                     }, 3000);
                 } else {
                     // Marcar el código como usado antes de mostrar el mensaje final
-                    marcarCodigoComoUsado(codigoActual);
+                    await marcarCodigoComoUsado(codigoActual);
                     setTimeout(() => {
                         mostrarMensaje(`🌟 ¡Gracias por participar ${nombreUsuario}! Ha sido una experiencia mágica 💖`);
                     }, 3000);
@@ -344,43 +360,88 @@
             }, 5200);
         }
         
-        function validarCodigo() {
+        async function validarCodigo() {
             soundClick.play();
             const codigoInput = document.getElementById('codigo');
             const validarBtn = document.getElementById('validarBtn');
             const codigo = codigoInput.value.trim().toUpperCase();
 
-            // Recargar códigos para tener la información más reciente
-            cargarCodigosPersonalizados();
+            // Validar que el usuario haya ingresado un código
+            if (!codigo) {
+                mostrarMensaje("❌ Por favor ingresa un código.");
+                codigoInput.style.animation = 'shake 0.5s ease-in-out';
+                setTimeout(() => { codigoInput.style.animation = ''; }, 500);
+                return;
+            }
 
-            if (codigosValidos[codigo]) {
-                const datosCodigo = codigosValidos[codigo];
-                
-                // Verificar si el código ya fue usado
-                if (datosCodigo.usado) {
+            // Deshabilitar botón durante la validación
+            validarBtn.disabled = true;
+            validarBtn.textContent = '⏳ Validando...';
+            mostrarMensaje("🔍 Validando tu código...");
+
+            try {
+                // Llamar al backend para validar el código
+                const response = await fetch('/.netlify/functions/validate-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ codigoId: codigo })
+                });
+
+                const result = await response.json();
+
+                if (response.status === 200 && result.success) {
+                    // Código válido y disponible
+                    const datosCodigo = result.data;
+                    
+                    codigoActual = codigo;
+                    nombreUsuario = datosCodigo.nombre;
+                    
+                    // Manejar premios como array o string
+                    const premiosArray = Array.isArray(datosCodigo.premios) ? datosCodigo.premios : [datosCodigo.premios];
+                    premiosActuales = [...premiosArray.filter(p => p)]; // Filtrar elementos vacíos
+                    tiradasRestantes = premiosActuales.length;
+                    
+                    mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
+                    document.getElementById('girarBtn').disabled = false;
+                    codigoInput.disabled = true;
+                    validarBtn.disabled = true;
+                    
+                    codigoInput.style.borderColor = '#10ac84';
+                    validarBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
+                    validarBtn.textContent = '✅ Código Válido';
+                    
+                } else if (response.status === 403) {
+                    // Código ya usado/expirado
                     mostrarMensaje("❌ Este código ya ha sido utilizado y ha expirado.");
                     codigoInput.style.animation = 'shake 0.5s ease-in-out';
                     setTimeout(() => { codigoInput.style.animation = ''; }, 500);
-                    return;
+                    
+                } else if (response.status === 404) {
+                    // Código no encontrado
+                    mostrarMensaje("❌ Código inválido. Inténtalo de nuevo.");
+                    codigoInput.style.animation = 'shake 0.5s ease-in-out';
+                    setTimeout(() => { codigoInput.style.animation = ''; }, 500);
+                    
+                } else {
+                    // Otro tipo de error
+                    mostrarMensaje("❌ Error al validar el código. Inténtalo de nuevo.");
+                    codigoInput.style.animation = 'shake 0.5s ease-in-out';
+                    setTimeout(() => { codigoInput.style.animation = ''; }, 500);
                 }
 
-                codigoActual = codigo;
-                nombreUsuario = datosCodigo.nombre;
-                premiosActuales = [...datosCodigo.premios];
-                tiradasRestantes = premiosActuales.length;
-                
-                mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
-                document.getElementById('girarBtn').disabled = false;
-                codigoInput.disabled = true;
-                validarBtn.disabled = true;
-                
-                codigoInput.style.borderColor = '#10ac84';
-                validarBtn.style.background = 'linear-gradient(45deg, #10ac84, #00d2d3)';
-                validarBtn.textContent = '✅ Código Válido';
-            } else {
-                mostrarMensaje("❌ Código inválido. Inténtalo de nuevo.");
+            } catch (error) {
+                console.error('Error de conexión al validar código:', error);
+                mostrarMensaje("❌ Error de conexión. Por favor, verifica tu internet e inténtalo de nuevo.");
                 codigoInput.style.animation = 'shake 0.5s ease-in-out';
                 setTimeout(() => { codigoInput.style.animation = ''; }, 500);
+            } finally {
+                // Reactivar botón si no fue exitoso
+                if (validarBtn.textContent !== '✅ Código Válido') {
+                    validarBtn.disabled = false;
+                    validarBtn.textContent = '✨ Validar Código ✨';
+                }
             }
         }
         
@@ -408,7 +469,7 @@
         }
 
         window.addEventListener('load', () => {
-            cargarCodigosPersonalizados();
+            // Eliminado: cargarCodigosPersonalizados() - ahora usamos solo el backend
             dibujarRuletaCompleta();
         });
         

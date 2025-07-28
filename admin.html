@@ -506,15 +506,6 @@
             document.querySelector('button[onclick="clearAllPremios()"]').style.display = isSingleSpin ? 'none' : 'block';
         }
 
-        function cargarCodigos() {
-            const codigosGuardados = localStorage.getItem('codigosPersonalizados');
-            return codigosGuardados ? JSON.parse(codigosGuardados) : {};
-        }
-
-        function guardarCodigos(codigos) {
-            localStorage.setItem('codigosPersonalizados', JSON.stringify(codigos));
-        }
-
         function inicializarPremioSelector() {
             const selector = document.getElementById('premioSelector');
             selector.innerHTML = '';
@@ -548,7 +539,7 @@
             setTimeout(() => { mensaje.style.display = 'none'; }, 3000);
         }
 
-        document.getElementById('createCodeForm').addEventListener('submit', function(e) {
+        document.getElementById('createCodeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
             const codigo = document.getElementById('customCode').value.trim().toUpperCase();
@@ -556,97 +547,209 @@
             const tiradas = parseInt(document.getElementById('numTiradas').value);
             const premiosSeleccionados = obtenerPremiosSeleccionados();
             
-            if (!codigo || !nombre || !tiradas) { alert('Todos los campos son requeridos.'); return; }
-            if (premiosSeleccionados.length === 0) { alert('Por favor selecciona al menos un premio.'); return; }
-            if (premiosSeleccionados.length < tiradas) { alert(`Debes seleccionar al menos ${tiradas} premios para ${tiradas} tiradas.`); return; }
-            
-            const codigos = cargarCodigos();
-            if (codigos[codigo] && !confirm('Este código ya existe. ¿Deseas reemplazarlo?')) return;
-            
-            codigos[codigo] = { nombre: nombre, premios: premiosSeleccionados.slice(0, tiradas), usado: false };
-            
-            guardarCodigos(codigos);
-            this.reset();
-            clearAllPremios();
-            
-            actualizarListaCodigos();
-            actualizarEstadisticas();
-            mostrarMensajeExito();
-        });
-
-        function actualizarListaCodigos() {
-            const codigos = cargarCodigos();
-            const lista = document.getElementById('codesList');
-            
-            if (Object.keys(codigos).length === 0) {
-                lista.innerHTML = '<p style="text-align: center; color: #666;">No hay códigos creados aún.</p>';
-                return;
+            if (!codigo || !nombre || !tiradas) { 
+                alert('Todos los campos son requeridos.'); 
+                return; 
+            }
+            if (premiosSeleccionados.length === 0) { 
+                alert('Por favor selecciona al menos un premio.'); 
+                return; 
+            }
+            if (premiosSeleccionados.length < tiradas) { 
+                alert(`Debes seleccionar al menos ${tiradas} premios para ${tiradas} tiradas.`); 
+                return; 
             }
             
-            lista.innerHTML = '';
-            Object.entries(codigos).forEach(([codigo, datos]) => {
-                const div = document.createElement('div');
-                div.className = `code-item ${datos.usado ? 'used' : 'active'}`;
+            try {
+                // Enviar datos al backend
+                const response = await fetch('/.netlify/functions/create-code', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        codigoId: codigo,
+                        nombreFan: nombre,
+                        premios: premiosSeleccionados.slice(0, tiradas)
+                    })
+                });
+
+                const result = await response.json();
                 
-                const estado = datos.usado ? 'Gastado' : 'Activo';
-                const botones = datos.usado 
-                    ? `<button class="delete-btn reactivate-btn action-btn" onclick="reactivarCodigo('${codigo}')">🔄 Reactivar</button>
-                       <button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo}')">🗑️ Eliminar</button>`
-                    : `<button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo}')">🗑️ Eliminar</button>`;
+                if (response.ok && result.success) {
+                    // Limpiar formulario
+                    this.reset();
+                    clearAllPremios();
+                    
+                    // Actualizar la vista
+                    await actualizarListaCodigos();
+                    await actualizarEstadisticas();
+                    mostrarMensajeExito();
+                } else {
+                    // Manejar errores específicos
+                    if (response.status === 409) {
+                        if (confirm(`${result.message}. ¿Deseas continuar de todas formas?`)) {
+                            // Si el usuario confirma, podrías implementar lógica adicional aquí
+                            alert('Funcionalidad de reemplazo no implementada aún.');
+                        }
+                    } else {
+                        alert(`Error: ${result.message || 'No se pudo crear el código'}`);
+                    }
+                }
+            } catch (error) {
+                console.error('Error al crear código:', error);
+                alert('Error de conexión. Por favor, intenta de nuevo.');
+            }
+        });
+
+        async function actualizarListaCodigos() {
+            const lista = document.getElementById('codesList');
+            
+            try {
+                // Mostrar indicador de carga
+                lista.innerHTML = '<p style="text-align: center; color: #666;">Cargando códigos...</p>';
                 
-                div.innerHTML = `
-                    <div class="code-info">
-                        <strong>${codigo}</strong>
-                        <small>Fan: ${datos.nombre}</small>
-                        <small>Estado: ${estado}</small>
-                    </div>
-                    <div class="code-info">
-                        <span>${datos.premios.length} Premio(s)</span>
-                        <small>${datos.premios.join(', ')}</small>
-                    </div>
-                    <div style="text-align: center;">
-                        <strong>${datos.premios.length}</strong><br>
-                        <small>Tiradas</small>
-                    </div>
-                    <div style="display: flex; flex-direction: column; gap: 5px;">
-                        ${botones}
-                    </div>
-                `;
-                lista.appendChild(div);
-            });
+                // Obtener códigos del backend
+                const response = await fetch('/.netlify/functions/get-all-codes');
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Error al cargar códigos');
+                }
+                
+                const codigos = result.data;
+                
+                if (codigos.length === 0) {
+                    lista.innerHTML = '<p style="text-align: center; color: #666;">No hay códigos creados aún.</p>';
+                    return;
+                }
+                
+                lista.innerHTML = '';
+                codigos.forEach(codigo => {
+                    const div = document.createElement('div');
+                    div.className = `code-item ${codigo.usado ? 'used' : 'active'}`;
+                    
+                    const estado = codigo.usado ? 'Gastado' : 'Activo';
+                    const botones = codigo.usado 
+                        ? `<button class="delete-btn reactivate-btn action-btn" onclick="reactivarCodigo('${codigo.codigoId}')">🔄 Reactivar</button>
+                           <button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo.codigoId}')">🗑️ Eliminar</button>`
+                        : `<button class="delete-btn action-btn" onclick="eliminarCodigo('${codigo.codigoId}')">🗑️ Eliminar</button>`;
+                    
+                    // Manejar premios como array o string
+                    const premiosArray = Array.isArray(codigo.premios) ? codigo.premios : [codigo.premios];
+                    const premiosTexto = premiosArray.filter(p => p).join(', ');
+                    
+                    div.innerHTML = `
+                        <div class="code-info">
+                            <strong>${codigo.codigoId}</strong>
+                            <small>Fan: ${codigo.nombre}</small>
+                            <small>Estado: ${estado}</small>
+                        </div>
+                        <div class="code-info">
+                            <span>${premiosArray.length} Premio(s)</span>
+                            <small>${premiosTexto}</small>
+                        </div>
+                        <div style="text-align: center;">
+                            <strong>${premiosArray.length}</strong><br>
+                            <small>Tiradas</small>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            ${botones}
+                        </div>
+                    `;
+                    lista.appendChild(div);
+                });
+                
+            } catch (error) {
+                console.error('Error al cargar códigos:', error);
+                lista.innerHTML = '<p style="text-align: center; color: #ff4757;">Error al cargar códigos. Intenta recargar la página.</p>';
+            }
         }
 
-        function reactivarCodigo(codigo) {
+        async function reactivarCodigo(codigo) {
             if (confirm(`¿Estás segura de reactivar el código "${codigo}"?`)) {
-                const codigos = cargarCodigos();
-                if (codigos[codigo]) {
-                    codigos[codigo].usado = false;
-                    guardarCodigos(codigos);
-                    actualizarListaCodigos();
-                    actualizarEstadisticas();
+                try {
+                    const response = await fetch('/.netlify/functions/reactivate-code', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ codigoId: codigo })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        await actualizarListaCodigos();
+                        await actualizarEstadisticas();
+                        alert('Código reactivado exitosamente');
+                    } else {
+                        alert(`Error: ${result.message || 'No se pudo reactivar el código'}`);
+                    }
+                } catch (error) {
+                    console.error('Error al reactivar código:', error);
+                    alert('Error de conexión. Por favor, intenta de nuevo.');
                 }
             }
         }
 
-        function eliminarCodigo(codigo) {
+        async function eliminarCodigo(codigo) {
             if (confirm(`¿Estás segura de eliminar el código "${codigo}"?`)) {
-                const codigos = cargarCodigos();
-                delete codigos[codigo];
-                guardarCodigos(codigos);
-                actualizarListaCodigos();
-                actualizarEstadisticas();
+                try {
+                    const response = await fetch('/.netlify/functions/delete-code', {
+                        method: 'DELETE',
+                        headers: {
+                            'Content-Type': 'application/json',
+                        },
+                        body: JSON.stringify({ codigoId: codigo })
+                    });
+
+                    const result = await response.json();
+                    
+                    if (response.ok && result.success) {
+                        await actualizarListaCodigos();
+                        await actualizarEstadisticas();
+                        alert('Código eliminado exitosamente');
+                    } else {
+                        alert(`Error: ${result.message || 'No se pudo eliminar el código'}`);
+                    }
+                } catch (error) {
+                    console.error('Error al eliminar código:', error);
+                    alert('Error de conexión. Por favor, intenta de nuevo.');
+                }
             }
         }
 
-        function actualizarEstadisticas() {
-            const codigos = cargarCodigos();
-            const codigosActivos = Object.values(codigos).filter(codigo => !codigo.usado);
-            const totalCodigos = codigosActivos.length;
-            const totalTiradas = codigosActivos.reduce((acc, val) => acc + val.premios.length, 0);
-            
-            document.getElementById('totalCodes').textContent = totalCodigos;
-            document.getElementById('totalPremios').textContent = totalTiradas;
-            document.getElementById('totalTiradas').textContent = totalTiradas; // Asumo que premios y tiradas es lo mismo.
+        async function actualizarEstadisticas() {
+            try {
+                const response = await fetch('/.netlify/functions/get-all-codes');
+                const result = await response.json();
+                
+                if (!response.ok || !result.success) {
+                    throw new Error(result.message || 'Error al cargar estadísticas');
+                }
+                
+                const codigos = result.data;
+                const codigosActivos = codigos.filter(codigo => !codigo.usado);
+                const totalCodigos = codigosActivos.length;
+                
+                // Calcular total de tiradas de códigos activos
+                const totalTiradas = codigosActivos.reduce((acc, codigo) => {
+                    const premiosArray = Array.isArray(codigo.premios) ? codigo.premios : [codigo.premios];
+                    return acc + premiosArray.filter(p => p).length;
+                }, 0);
+                
+                document.getElementById('totalCodes').textContent = totalCodigos;
+                document.getElementById('totalPremios').textContent = totalTiradas;
+                document.getElementById('totalTiradas').textContent = totalTiradas;
+                
+            } catch (error) {
+                console.error('Error al actualizar estadísticas:', error);
+                // Mostrar 0 en caso de error
+                document.getElementById('totalCodes').textContent = '0';
+                document.getElementById('totalPremios').textContent = '0';
+                document.getElementById('totalTiradas').textContent = '0';
+            }
         }
 
         document.getElementById('customCode').addEventListener('input', e => e.target.value = e.target.value.toUpperCase());
