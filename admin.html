@@ -262,16 +262,6 @@
             box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
 
-        .success-message {
-            background: #2ecc71;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            margin-bottom: 20px;
-            text-align: center;
-            display: none;
-        }
-
         .code-item.active {
             background: linear-gradient(45deg, #ff6b9d, #c44569);
             color: white;
@@ -295,6 +285,62 @@
             background: #27ae60;
         }
 
+        /* Sistema de Notificaciones */
+        .notification-banner {
+            position: relative;
+            padding: 15px 50px 15px 20px;
+            margin: 20px 0;
+            border-radius: 12px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            transform: translateY(-20px);
+            opacity: 0;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .notification-banner.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .notification-banner.success {
+            background: linear-gradient(135deg, #00b894, #00cec9);
+            color: white;
+            border-left: 5px solid #00a085;
+        }
+
+        .notification-banner.error {
+            background: linear-gradient(135deg, #e17055, #d63031);
+            color: white;
+            border-left: 5px solid #c0392b;
+        }
+
+        .notification-text {
+            flex: 1;
+            font-size: 1rem;
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            color: rgba(255,255,255,0.8);
+            font-size: 1.2rem;
+            cursor: pointer;
+            padding: 5px;
+            border-radius: 50%;
+            transition: all 0.3s ease;
+            margin-left: 15px;
+        }
+
+        .notification-close:hover {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            transform: scale(1.1);
+        }
+
         @media (max-width: 768px) {
             .admin-sections {
                 grid-template-columns: 1fr;
@@ -311,12 +357,14 @@
     <div class="container" style="display: none;">
         <h1>Panel de Administración</h1>
         
+        <!-- Sistema de notificaciones -->
+        <div id="notification-banner" class="notification-banner" style="display: none;">
+            <span class="notification-text"></span>
+            <button class="notification-close" onclick="cerrarNotificacion()">✕</button>
+        </div>
+        
         <div class="navigation">
             <a href="index.html" class="nav-btn">🎯 Ir a la Ruleta</a>
-        </div>
-
-        <div class="success-message" id="successMessage">
-            ✅ Código creado exitosamente!
         </div>
 
         <div class="stats">
@@ -441,6 +489,38 @@
             "🎵 AUDIO EXCLUSIVO PARA TI", "💰 DESCUENTO 40% EN MI CONTENIDO"
         ];
         
+        // === SISTEMA DE NOTIFICACIONES ===
+        function mostrarNotificacion(mensaje, tipo = 'success') {
+            const banner = document.getElementById('notification-banner');
+            const textElement = banner.querySelector('.notification-text');
+            
+            // Configurar el mensaje
+            textElement.textContent = mensaje;
+            
+            // Limpiar clases anteriores y añadir la nueva
+            banner.className = `notification-banner ${tipo}`;
+            
+            // Mostrar con animación
+            banner.style.display = 'flex';
+            setTimeout(() => {
+                banner.classList.add('show');
+            }, 10);
+            
+            // Auto-ocultar después de 4 segundos
+            setTimeout(() => {
+                cerrarNotificacion();
+            }, 4000);
+        }
+
+        function cerrarNotificacion() {
+            const banner = document.getElementById('notification-banner');
+            banner.classList.remove('show');
+            
+            setTimeout(() => {
+                banner.style.display = 'none';
+            }, 400);
+        }
+        
         // --- INICIO DE LA SOLUCIÓN AL BUG DE CARGA ---
 
         // Función que inicializa todo el contenido dinámico del panel.
@@ -533,12 +613,6 @@
             return Array.from(document.querySelectorAll('#premioSelector input:checked')).map(cb => cb.value);
         }
 
-        function mostrarMensajeExito() {
-            const mensaje = document.getElementById('successMessage');
-            mensaje.style.display = 'block';
-            setTimeout(() => { mensaje.style.display = 'none'; }, 3000);
-        }
-
         document.getElementById('createCodeForm').addEventListener('submit', async function(e) {
             e.preventDefault();
             
@@ -548,15 +622,15 @@
             const premiosSeleccionados = obtenerPremiosSeleccionados();
             
             if (!codigo || !nombre || !tiradas) { 
-                alert('Todos los campos son requeridos.'); 
+                mostrarNotificacion('Todos los campos son requeridos.', 'error'); 
                 return; 
             }
             if (premiosSeleccionados.length === 0) { 
-                alert('Por favor selecciona al menos un premio.'); 
+                mostrarNotificacion('Por favor selecciona al menos un premio.', 'error'); 
                 return; 
             }
             if (premiosSeleccionados.length < tiradas) { 
-                alert(`Debes seleccionar al menos ${tiradas} premios para ${tiradas} tiradas.`); 
+                mostrarNotificacion(`Debes seleccionar al menos ${tiradas} premios para ${tiradas} tiradas.`, 'error'); 
                 return; 
             }
             
@@ -589,13 +663,13 @@
                     const mensaje = result.operation === 'update' 
                         ? `Código "${codigo}" actualizado exitosamente`
                         : `Código "${codigo}" creado exitosamente`;
-                    alert(mensaje);
+                    mostrarNotificacion(mensaje, 'success');
                 } else {
-                    alert(`Error: ${result.message || 'No se pudo procesar el código'}`);
+                    mostrarNotificacion(`Error: ${result.message || 'No se pudo procesar el código'}`, 'error');
                 }
             } catch (error) {
                 console.error('Error al crear/actualizar código:', error);
-                alert('Error de conexión. Por favor, intenta de nuevo.');
+                mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
             }
         });
 
@@ -679,13 +753,13 @@
                     if (response.ok && result.success) {
                         await actualizarListaCodigos();
                         await actualizarEstadisticas();
-                        alert('Código reactivado exitosamente');
+                        mostrarNotificacion('Código reactivado exitosamente', 'success');
                     } else {
-                        alert(`Error: ${result.message || 'No se pudo reactivar el código'}`);
+                        mostrarNotificacion(`Error: ${result.message || 'No se pudo reactivar el código'}`, 'error');
                     }
                 } catch (error) {
                     console.error('Error al reactivar código:', error);
-                    alert('Error de conexión. Por favor, intenta de nuevo.');
+                    mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
                 }
             }
         }
@@ -706,13 +780,13 @@
                     if (response.ok && result.success) {
                         await actualizarListaCodigos();
                         await actualizarEstadisticas();
-                        alert('Código eliminado exitosamente');
+                        mostrarNotificacion('Código eliminado exitosamente', 'success');
                     } else {
-                        alert(`Error: ${result.message || 'No se pudo eliminar el código'}`);
+                        mostrarNotificacion(`Error: ${result.message || 'No se pudo eliminar el código'}`, 'error');
                     }
                 } catch (error) {
                     console.error('Error al eliminar código:', error);
-                    alert('Error de conexión. Por favor, intenta de nuevo.');
+                    mostrarNotificacion('Error de conexión. Por favor, intenta de nuevo.', 'error');
                 }
             }
         }
