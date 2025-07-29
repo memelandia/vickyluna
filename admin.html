@@ -990,29 +990,39 @@
             }
         }
         
-        // === GESTIÓN DINÁMICA DE PREMIOS ===
+        // === GESTIÓN SIMPLIFICADA DE PREMIOS ===
+        let premiosLocales = []; // Array local para gestionar los premios
+        let premiosModificados = false; // Flag para saber si hay cambios pendientes
+        
         async function cargarYMostrarPremios() {
             try {
-                const response = await fetch('/.netlify/functions/get-premios');
+                const response = await fetch('/.netlify/functions/config-manager');
                 const result = await response.json();
                 
                 if (!response.ok || !result.success) {
-                    throw new Error(result.message || 'Error al cargar premios');
+                    throw new Error(result.message || 'Error al cargar configuración');
                 }
                 
-                // Actualizar variable global
-                premiosDisponibles = result.data.map(p => p.nombre);
+                // Obtener premios desde la configuración unificada
+                premiosLocales = result.data.premios || [];
+                premiosModificados = false;
                 
                 // Mostrar premios en la lista de gestión
-                mostrarPremiosEnLista(result.data);
+                mostrarPremiosEnLista(premiosLocales);
                 
                 // Actualizar selector de premios para crear códigos
-                actualizarSelectorPremios(result.data);
+                actualizarSelectorPremios(premiosLocales);
                 
                 // Actualizar estado del botón de añadir
-                actualizarEstadoBotonAñadir(result.data.length);
+                actualizarEstadoBotonAñadir(premiosLocales.length);
                 
-                return result.data;
+                // Ocultar botón de guardar cambios
+                mostrarBotonGuardarCambios(false);
+                
+                // Actualizar variable global para el selector de códigos
+                premiosDisponibles = [...premiosLocales];
+                
+                return premiosLocales;
                 
             } catch (error) {
                 console.error('Error al cargar premios:', error);
@@ -1030,14 +1040,14 @@
             }
             
             lista.innerHTML = '';
-            premios.forEach(premio => {
+            premios.forEach((premio, index) => {
                 const div = document.createElement('div');
                 div.className = 'premio-item';
                 div.innerHTML = `
-                    <span class="premio-nombre">${premio.nombre}</span>
+                    <span class="premio-nombre">${premio}</span>
                     <div class="premio-actions">
-                        <button class="premio-btn edit" onclick="editarPremio('${premio.id}', '${premio.nombre.replace(/'/g, "\\'")}')">✏️ Editar</button>
-                        <button class="premio-btn delete" onclick="eliminarPremio('${premio.id}', '${premio.nombre.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
+                        <button class="premio-btn edit" onclick="editarPremioLocal(${index}, '${premio.replace(/'/g, "\\'")}')">✏️ Editar</button>
+                        <button class="premio-btn delete" onclick="eliminarPremioLocal(${index}, '${premio.replace(/'/g, "\\'")}')">🗑️ Eliminar</button>
                     </div>
                 `;
                 lista.appendChild(div);
@@ -1052,8 +1062,8 @@
                 const div = document.createElement('div');
                 div.className = 'premio-item';
                 div.innerHTML = `
-                    <input type="checkbox" id="premio_${index}" value="${premio.nombre}">
-                    <label for="premio_${index}">${premio.nombre}</label>
+                    <input type="checkbox" id="premio_${index}" value="${premio}">
+                    <label for="premio_${index}">${premio}</label>
                 `;
                 selector.appendChild(div);
             });
@@ -1105,7 +1115,7 @@
             
             if (cantidadPremios >= 10) {
                 btn.disabled = true;
-                btn.textContent = '� Límite alcanzado (10/10)';
+                btn.textContent = '🚫 Límite alcanzado (10/10)';
                 input.disabled = true;
                 input.placeholder = 'Límite de 10 premios alcanzado';
             } else {
@@ -1115,6 +1125,142 @@
                 input.placeholder = 'Nombre del nuevo premio...';
             }
         }
+        
+        function mostrarBotonGuardarCambios(mostrar) {
+            let botonGuardar = document.getElementById('guardarCambiosPremiosBtn');
+            
+            if (mostrar && !botonGuardar) {
+                // Crear botón si no existe
+                const contenedor = document.getElementById('premiosList').parentNode;
+                botonGuardar = document.createElement('button');
+                botonGuardar.id = 'guardarCambiosPremiosBtn';
+                botonGuardar.className = 'btn';
+                botonGuardar.style.cssText = 'width: 100%; padding: 15px 25px; margin-top: 15px; background: linear-gradient(45deg, #4CAF50, #45a049); font-size: 1.1rem; font-weight: 700;';
+                botonGuardar.textContent = '💾 Guardar Cambios en Premios';
+                botonGuardar.onclick = guardarCambiosPremios;
+                contenedor.appendChild(botonGuardar);
+            } else if (!mostrar && botonGuardar) {
+                // Ocultar/eliminar botón
+                botonGuardar.remove();
+            }
+        }
+        
+        function añadirPremioLocal() {
+            const input = document.getElementById('nuevoPremio');
+            const nombre = input.value.trim();
+            
+            if (!nombre) {
+                mostrarNotificacion('Por favor, ingresa un nombre para el premio.', 'error');
+                return;
+            }
+            
+            if (premiosLocales.length >= 10) {
+                mostrarNotificacion('No puedes añadir más de 10 premios.', 'error');
+                return;
+            }
+            
+            if (premiosLocales.includes(nombre)) {
+                mostrarNotificacion('Ya existe un premio con ese nombre.', 'error');
+                return;
+            }
+            
+            // Añadir al array local
+            premiosLocales.push(nombre);
+            premiosModificados = true;
+            
+            // Actualizar interfaz
+            input.value = '';
+            mostrarPremiosEnLista(premiosLocales);
+            actualizarSelectorPremios(premiosLocales);
+            actualizarEstadoBotonAñadir(premiosLocales.length);
+            mostrarBotonGuardarCambios(true);
+            
+            mostrarNotificacion('Premio añadido. ¡No olvides guardar los cambios!', 'success');
+        }
+        
+        function editarPremioLocal(index, nombreActual) {
+            const nuevoNombre = prompt('Editar premio:', nombreActual);
+            
+            if (!nuevoNombre || nuevoNombre.trim() === '' || nuevoNombre.trim() === nombreActual) {
+                return; // Cancelado o sin cambios
+            }
+            
+            const nombreLimpio = nuevoNombre.trim();
+            
+            if (premiosLocales.includes(nombreLimpio)) {
+                mostrarNotificacion('Ya existe un premio con ese nombre.', 'error');
+                return;
+            }
+            
+            // Actualizar en el array local
+            premiosLocales[index] = nombreLimpio;
+            premiosModificados = true;
+            
+            // Actualizar interfaz
+            mostrarPremiosEnLista(premiosLocales);
+            actualizarSelectorPremios(premiosLocales);
+            mostrarBotonGuardarCambios(true);
+            
+            mostrarNotificacion('Premio editado. ¡No olvides guardar los cambios!', 'success');
+        }
+        
+        async function eliminarPremioLocal(index, nombre) {
+            const confirmed = await mostrarConfirmacion(`¿Estás segura de eliminar el premio "${nombre}"?`);
+            
+            if (!confirmed) return;
+            
+            // Eliminar del array local
+            premiosLocales.splice(index, 1);
+            premiosModificados = true;
+            
+            // Actualizar interfaz
+            mostrarPremiosEnLista(premiosLocales);
+            actualizarSelectorPremios(premiosLocales);
+            actualizarEstadoBotonAñadir(premiosLocales.length);
+            mostrarBotonGuardarCambios(true);
+            
+            mostrarNotificacion('Premio eliminado. ¡No olvides guardar los cambios!', 'success');
+        }
+        
+        async function guardarCambiosPremios() {
+            const btn = document.getElementById('guardarCambiosPremiosBtn');
+            const originalText = btn.textContent;
+            
+            try {
+                btn.disabled = true;
+                btn.textContent = 'Guardando... ✨';
+                
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ nuevaListaPremios: premiosLocales })
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok && result.success) {
+                    premiosModificados = false;
+                    mostrarBotonGuardarCambios(false);
+                    mostrarNotificacion('✨ Cambios guardados exitosamente en Airtable!', 'success');
+                    
+                    // Actualizar variable global para el selector de códigos
+                    premiosDisponibles = [...premiosLocales];
+                } else {
+                    mostrarNotificacion(result.message || 'Error al guardar cambios', 'error');
+                }
+                
+            } catch (error) {
+                console.error('Error al guardar cambios:', error);
+                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = originalText;
+            }
+        }
+
+        // Funciones heredadas (deprecadas) - No usar en código nuevo
         
         async function añadirPremio() {
             const input = document.getElementById('nuevoPremio');
@@ -1388,10 +1534,10 @@
             document.getElementById('numTiradas').addEventListener('input', manejarCambioTiradas);
             
             // Event listeners para gestión de premios
-            document.getElementById('addPremioBtn').addEventListener('click', añadirPremio);
+            document.getElementById('addPremioBtn').addEventListener('click', añadirPremioLocal);
             document.getElementById('nuevoPremio').addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
-                    añadirPremio();
+                    añadirPremioLocal();
                 }
             });
             

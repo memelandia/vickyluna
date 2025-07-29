@@ -1,5 +1,20 @@
 const Airtable = require('airtable');
 
+// Funciones auxiliares para manejo de premios
+function premiosStringToArray(premiosString) {
+    if (!premiosString || typeof premiosString !== 'string') {
+        return [];
+    }
+    return premiosString.split(',').map(p => p.trim()).filter(p => p.length > 0);
+}
+
+function premiosArrayToString(premiosArray) {
+    if (!Array.isArray(premiosArray)) {
+        return '';
+    }
+    return premiosArray.map(p => p.trim()).filter(p => p.length > 0).join(',');
+}
+
 exports.handler = async (event, context) => {
     // Configurar headers CORS
     const headers = {
@@ -26,7 +41,7 @@ exports.handler = async (event, context) => {
         const configTable = base('Configuraciones');
 
         if (event.httpMethod === 'GET') {
-            // ===== OBTENER CONFIGURACIÓN =====
+            // ===== OBTENER CONFIGURACIÓN COMPLETA =====
             try {
                 const records = await configTable.select({
                     maxRecords: 1
@@ -34,9 +49,12 @@ exports.handler = async (event, context) => {
 
                 if (records.length === 0) {
                     // Si no hay configuración, crear una por defecto
+                    const premiosPorDefecto = 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos,Contenido Exclusivo,Chat Privado,Foto Personalizada';
+                    
                     const newRecord = await configTable.create({
                         'Avatar URL': '',
-                        'Nombre Modelo': 'Scarlet Lucy'
+                        'Nombre Modelo': 'Scarlet Lucy',
+                        'Premios': premiosPorDefecto
                     });
 
                     return {
@@ -46,7 +64,8 @@ exports.handler = async (event, context) => {
                             success: true,
                             data: {
                                 avatarURL: '',
-                                nombreModelo: 'Scarlet Lucy'
+                                nombreModelo: 'Scarlet Lucy',
+                                premios: premiosStringToArray(premiosPorDefecto)
                             }
                         })
                     };
@@ -55,6 +74,8 @@ exports.handler = async (event, context) => {
                 const record = records[0];
                 const avatarURL = record.get('Avatar URL') || '';
                 const nombreModelo = record.get('Nombre Modelo') || 'Scarlet Lucy';
+                const premiosString = record.get('Premios') || 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos';
+                const premios = premiosStringToArray(premiosString);
 
                 return {
                     statusCode: 200,
@@ -63,7 +84,8 @@ exports.handler = async (event, context) => {
                         success: true,
                         data: {
                             avatarURL,
-                            nombreModelo
+                            nombreModelo,
+                            premios
                         }
                     })
                 };
@@ -75,7 +97,7 @@ exports.handler = async (event, context) => {
                     headers,
                     body: JSON.stringify({
                         success: false,
-                        message: 'Error al cargar la configuración'
+                        message: 'Error al cargar la configuración: ' + error.message
                     })
                 };
             }
@@ -83,7 +105,8 @@ exports.handler = async (event, context) => {
 
         if (event.httpMethod === 'POST') {
             // ===== ACTUALIZAR CONFIGURACIÓN =====
-            const { nuevaAvatarURL, nuevoNombreModelo } = JSON.parse(event.body);
+            const body = JSON.parse(event.body);
+            const { nuevaAvatarURL, nuevoNombreModelo, nuevaListaPremios } = body;
 
             try {
                 // Buscar el registro de configuración existente
@@ -94,9 +117,12 @@ exports.handler = async (event, context) => {
                 let recordId;
                 if (records.length === 0) {
                     // Crear nuevo registro si no existe
+                    const premiosPorDefecto = nuevaListaPremios ? premiosArrayToString(nuevaListaPremios) : 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos';
+                    
                     const newRecord = await configTable.create({
                         'Avatar URL': nuevaAvatarURL || '',
-                        'Nombre Modelo': nuevoNombreModelo || 'Scarlet Lucy'
+                        'Nombre Modelo': nuevoNombreModelo || 'Scarlet Lucy',
+                        'Premios': premiosPorDefecto
                     });
                     recordId = newRecord.id;
                 } else {
@@ -133,7 +159,7 @@ exports.handler = async (event, context) => {
                             };
                         }
                         
-                        // Validar caracteres permitidos (letras, números, espacios y algunos caracteres especiales)
+                        // Validar caracteres permitidos
                         if (!/^[a-zA-Z0-9\s\u00C0-\u017F\-\.]+$/.test(nombreLimpio)) {
                             return {
                                 statusCode: 400,
@@ -147,6 +173,58 @@ exports.handler = async (event, context) => {
                         
                         updateFields['Nombre Modelo'] = nombreLimpio;
                     }
+                    
+                    if (nuevaListaPremios !== undefined) {
+                        // Validar lista de premios
+                        if (!Array.isArray(nuevaListaPremios)) {
+                            return {
+                                statusCode: 400,
+                                headers,
+                                body: JSON.stringify({
+                                    success: false,
+                                    message: 'La lista de premios debe ser un array'
+                                })
+                            };
+                        }
+                        
+                        if (nuevaListaPremios.length > 10) {
+                            return {
+                                statusCode: 400,
+                                headers,
+                                body: JSON.stringify({
+                                    success: false,
+                                    message: 'No se pueden tener más de 10 premios'
+                                })
+                            };
+                        }
+                        
+                        // Validar cada premio
+                        for (let premio of nuevaListaPremios) {
+                            if (!premio || typeof premio !== 'string' || premio.trim().length === 0) {
+                                return {
+                                    statusCode: 400,
+                                    headers,
+                                    body: JSON.stringify({
+                                        success: false,
+                                        message: 'Todos los premios deben tener un nombre válido'
+                                    })
+                                };
+                            }
+                            
+                            if (premio.trim().length > 50) {
+                                return {
+                                    statusCode: 400,
+                                    headers,
+                                    body: JSON.stringify({
+                                        success: false,
+                                        message: 'Los nombres de premios no pueden tener más de 50 caracteres'
+                                    })
+                                };
+                            }
+                        }
+                        
+                        updateFields['Premios'] = premiosArrayToString(nuevaListaPremios);
+                    }
 
                     if (Object.keys(updateFields).length > 0) {
                         await configTable.update(recordId, updateFields);
@@ -157,6 +235,8 @@ exports.handler = async (event, context) => {
                 const updatedRecord = await configTable.find(recordId);
                 const avatarURL = updatedRecord.get('Avatar URL') || '';
                 const nombreModelo = updatedRecord.get('Nombre Modelo') || 'Scarlet Lucy';
+                const premiosString = updatedRecord.get('Premios') || '';
+                const premios = premiosStringToArray(premiosString);
 
                 return {
                     statusCode: 200,
@@ -166,7 +246,8 @@ exports.handler = async (event, context) => {
                         message: 'Configuración actualizada exitosamente',
                         data: {
                             avatarURL,
-                            nombreModelo
+                            nombreModelo,
+                            premios
                         }
                     })
                 };
@@ -178,7 +259,7 @@ exports.handler = async (event, context) => {
                     headers,
                     body: JSON.stringify({
                         success: false,
-                        message: 'Error al guardar la configuración'
+                        message: 'Error al guardar la configuración: ' + error.message
                     })
                 };
             }
@@ -201,7 +282,7 @@ exports.handler = async (event, context) => {
             headers,
             body: JSON.stringify({
                 success: false,
-                message: 'Error interno del servidor'
+                message: 'Error interno del servidor: ' + error.message
             })
         };
     }
