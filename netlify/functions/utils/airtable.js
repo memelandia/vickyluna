@@ -1,19 +1,12 @@
 const Airtable = require('airtable');
 
-const {
-    AIRTABLE_API_KEY,
-    AIRTABLE_BASE_ID,
-    AIRTABLE_TABLE_NAME
-} = process.env;
+// Configurar conexión a Airtable usando las variables de entorno principales
+const base = new Airtable({
+    apiKey: process.env.AIRTABLE_API_KEY
+}).base(process.env.AIRTABLE_BASE_ID);
 
-if (!AIRTABLE_API_KEY || !AIRTABLE_BASE_ID || !AIRTABLE_TABLE_NAME) {
-    throw new Error('Las variables de entorno de Airtable son requeridas.');
-}
-
-Airtable.configure({ apiKey: AIRTABLE_API_KEY });
-
-const base = Airtable.base(AIRTABLE_BASE_ID);
-const table = base(AIRTABLE_TABLE_NAME);
+// Tabla de configuraciones (nombre fijo)
+const table = base('Configuraciones');
 
 // FUNCIONES DE AYUDA EXPORTADAS PARA MANTENER LA CONSISTENCIA
 const premiosStringToArray = (premiosStr) => {
@@ -22,8 +15,8 @@ const premiosStringToArray = (premiosStr) => {
 };
 
 const premiosArrayToString = (premiosArr) => {
-    if (!premiosArr || !Array.isArray(premiosArr)) return [];
-    return premiosArr.join(', ');
+    if (!premiosArr || !Array.isArray(premiosArr)) return '';
+    return premiosArr.join(',');
 };
 
 module.exports = { 
