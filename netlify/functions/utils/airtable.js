@@ -5,7 +5,12 @@ const base = new Airtable({
     apiKey: process.env.AIRTABLE_API_KEY
 }).base(process.env.AIRTABLE_BASE_ID);
 
-// Tabla de configuraciones (nombre fijo)
+// Función para obtener una tabla específica
+function getTable(tableName) {
+    return base(tableName);
+}
+
+// Tabla de configuraciones (para compatibilidad)
 const table = base('Configuraciones');
 
 // FUNCIONES DE AYUDA EXPORTADAS PARA MANTENER LA CONSISTENCIA
@@ -20,7 +25,8 @@ const premiosArrayToString = (premiosArr) => {
 };
 
 module.exports = { 
-    table, 
+    table,
+    getTable,
     premiosStringToArray, 
     premiosArrayToString 
 };

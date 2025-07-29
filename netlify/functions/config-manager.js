@@ -1,36 +1,36 @@
-const { table, premiosStringToArray, premiosArrayToString } = require('./utils/airtable');
+const { getTable, premiosStringToArray, premiosArrayToString } = require('./utils/airtable');
 
-// La tabla 'Configuraciones' debe tener los campos: 'Nombre Modelo' (Single line text), 'avatarURL' (Long text), 'Premios' (Long text)
-// y una única fila de registro.
+// La tabla 'Configuraciones' debe tener los campos: 'Nombre Modelo' (Single line text), 'avatarURL' (Long text), 'Premios' (Long text).
+// y debe contener una única fila de registro para que esto funcione.
 
 exports.handler = async (event) => {
-    const headers = { 'Access-Control-Allow-Origin': '*' };
+    const headers = { 'Access-Control-Allow-Origin': '*' }; // Simplificado para compatibilidad
     if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers };
 
-    const configTable = table; // Asumimos que utils/airtable está apuntando a 'Configuraciones'
+    const configTable = getTable('Configuraciones');
 
     try {
         // Obtenemos siempre la primera (y única) fila de configuración.
         const records = await configTable.select({ maxRecords: 1 }).firstPage();
         
         let record;
-        // Si no existe ninguna fila de configuración, la creamos con valores por defecto.
+        // Si no existe ninguna fila de configuración, creamos una al vuelo.
         if (records.length === 0) {
-            const newRecord = await configTable.create([{
+            const [newRecord] = await configTable.create([{
                 fields: {
                     'Nombre Modelo': 'Nombre por Defecto',
                     'avatarURL': '',
                     'Premios': 'Premio A, Premio B, Premio C'
                 }
             }]);
-            record = newRecord[0];
+            record = newRecord;
         } else {
             record = records[0];
         }
         
         const recordId = record.id; // ID interno de Airtable (ej: recXXXXXXXX)
 
-        // LÓGICA GET
+        // ===== LÓGICA GET (Leer Configuración) =====
         if (event.httpMethod === 'GET') {
             return {
                 statusCode: 200,
@@ -46,20 +46,31 @@ exports.handler = async (event) => {
             };
         }
 
-        // LÓGICA POST
+        // ===== LÓGICA POST (Actualizar Configuración) =====
         if (event.httpMethod === 'POST') {
             const body = JSON.parse(event.body);
             const { nuevoNombreModelo, nuevaAvatarURL, nuevaListaPremios } = body;
             const fieldsToUpdate = {};
 
             // Construir el objeto de actualización solo con los campos que se enviaron
-            if (nuevoNombreModelo !== undefined) fieldsToUpdate['Nombre Modelo'] = nuevoNombreModelo;
-            if (nuevaAvatarURL !== undefined) fieldsToUpdate['avatarURL'] = nuevaAvatarURL;
-            if (nuevaListaPremios !== undefined) fieldsToUpdate['Premios'] = premiosArrayToString(nuevaListaPremios);
+            if (nuevoNombreModelo !== undefined) {
+                fieldsToUpdate['Nombre Modelo'] = nuevoNombreModelo;
+            }
+            if (nuevaAvatarURL !== undefined) {
+                // El nombre aquí DEBE coincidir con el nombre de la columna en Airtable
+                fieldsToUpdate['avatarURL'] = nuevaAvatarURL; 
+            }
+            if (nuevaListaPremios !== undefined) {
+                fieldsToUpdate['Premios'] = premiosArrayToString(nuevaListaPremios);
+            }
 
             // Si hay algo que actualizar, procedemos
             if (Object.keys(fieldsToUpdate).length > 0) {
-                await configTable.update(recordId, fieldsToUpdate);
+                // Usamos la sintaxis de array que es más robusta.
+                await configTable.update([{
+                    id: recordId,
+                    fields: fieldsToUpdate
+                }]);
             }
 
             return {
@@ -72,12 +83,13 @@ exports.handler = async (event) => {
         return { statusCode: 405, headers, body: JSON.stringify({ success: false, message: 'Método no permitido' }) };
 
     } catch (error) {
+        console.error("Error en config-manager:", error);
         return {
             statusCode: 500,
             headers,
             body: JSON.stringify({
                 success: false,
-                message: 'Error en el servidor: ' + error.message
+                message: 'Error interno del servidor: ' + error.message
             })
         };
     }
