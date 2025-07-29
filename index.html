@@ -224,12 +224,67 @@
             animation: fadeIn 0.5s ease-in-out;
         }
         
+        /* === CONTENEDOR DEL AVATAR === */
+        #avatar-container {
+            position: absolute;
+            right: 5%;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 350px;
+            height: 500px;
+            z-index: 0;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+            border-radius: 20px;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        #avatar-container.visible {
+            opacity: 1;
+        }
+
+        #avatar-container img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 20px;
+            /* Efecto de fusión con el fondo */
+            filter: grayscale(0.1) brightness(0.9) contrast(1.1);
+            /* Máscara de gradiente para difuminar bordes superior e inferior */
+            mask-image: linear-gradient(to top, transparent 0%, black 25%, black 75%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to top, transparent 0%, black 25%, black 75%, transparent 100%);
+        }
+        
         /* === DISEÑO RESPONSIVO COMPLETO === */
+        
+        /* Pantallas grandes */
+        @media (max-width: 1200px) {
+            #avatar-container {
+                width: 300px;
+                height: 400px;
+                right: 2%;
+            }
+        }
         
         /* Tablets y pantallas medianas */
         @media (max-width: 992px) {
             .main-content {
                 gap: 30px;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            #avatar-container {
+                position: relative;
+                right: auto;
+                top: auto;
+                transform: none;
+                width: 250px;
+                height: 350px;
+                margin: 20px auto;
+                order: 3; /* Después de la ruleta y antes de controles */
             }
             
             .controls-title {
@@ -283,6 +338,12 @@
             
             .main-content {
                 gap: 25px;
+            }
+            
+            #avatar-container {
+                width: 200px;
+                height: 280px;
+                margin: 15px auto;
             }
             
             .controls-title {
@@ -382,6 +443,12 @@
             
             .main-content {
                 gap: 20px;
+            }
+            
+            #avatar-container {
+                width: 150px;
+                height: 200px;
+                margin: 10px auto;
             }
             
             .controls-title {
@@ -656,6 +723,8 @@
                 </div>
                 <button id="girarBtn" class="button" disabled>🎯 ¡GIRAR RULETA! 🎯</button>
             </div>
+            <!-- Nuevo contenedor para avatar -->
+            <div id="avatar-container"></div>
         </div>
         <div class="message-section">
             <div id="mensaje">✨ Ingresa tu código para comenzar la experiencia mágica ✨</div>
@@ -1194,15 +1263,44 @@
                         document.title = `${result.data.nombreModelo} - Ruleta Interactiva`;
                     }
                     
-                    // Aquí se puede añadir la lógica del avatar cuando sea necesaria
-                    // if (result.data.avatarURL) {
-                    //     // Implementar cuando tengamos el avatar en la interfaz
-                    // }
+                    // Cargar y mostrar el avatar si existe
+                    if (result.data.avatarURL && result.data.avatarURL.startsWith('data:image/')) {
+                        mostrarAvatar(result.data.avatarURL);
+                    }
                 }
             } catch (error) {
                 console.error('Error al cargar configuración visual:', error);
                 // No mostrar error al usuario, usar valores por defecto
             }
+        }
+
+        function mostrarAvatar(avatarBase64) {
+            const container = document.getElementById('avatar-container');
+            if (!container) return;
+            
+            // Limpiar contenido anterior
+            container.innerHTML = '';
+            
+            // Crear nuevo elemento imagen
+            const img = document.createElement('img');
+            img.src = avatarBase64;
+            
+            // Manejar carga de imagen
+            img.onload = function() {
+                // Añadir imagen al contenedor
+                container.appendChild(img);
+                
+                // Mostrar con animación suave después de un pequeño delay
+                setTimeout(() => {
+                    container.classList.add('visible');
+                }, 300);
+            };
+            
+            img.onerror = function() {
+                console.error('Error al cargar la imagen del avatar');
+                // Ocultar contenedor si hay error
+                container.classList.remove('visible');
+            };
         }
 
         window.addEventListener('load', async () => {
