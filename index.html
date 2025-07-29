@@ -818,23 +818,11 @@
         }
         */
 
-        async function dibujarRuletaCompleta() {
-            // Cargar premios dinámicamente desde el backend
-            try {
-                const response = await fetch('/.netlify/functions/get-premios');
-                const result = await response.json();
-                
-                if (response.ok && result.success && result.data.length > 0) {
-                    // Actualizar variable global con los premios del backend
-                    premiosDisponibles = result.data.map(p => p.nombre);
-                } else {
-                    console.error('Error al cargar premios o no hay premios configurados');
-                    mostrarNotificacion('No se pudieron cargar los premios. Contacta al administrador.', 'error');
-                    return;
-                }
-            } catch (error) {
-                console.error('Error al cargar premios:', error);
-                mostrarNotificacion('Error de conexión al cargar premios. Verifica tu internet.', 'error');
+        function dibujarRuletaCompleta() {
+            // Solo dibujar usando premiosDisponibles (ya cargados por inicializarPagina)
+            if (!premiosDisponibles || premiosDisponibles.length === 0) {
+                console.error('No hay premios disponibles para dibujar la ruleta');
+                mostrarNotificacion('Error: No hay premios configurados para la ruleta.', 'error');
                 return;
             }
             
@@ -1072,7 +1060,10 @@
                     
                     codigoActual = codigo;
                     nombreUsuario = datosCodigo.nombreFan;
-                    premiosActuales = [...datosCodigo.premios];
+                    // Usar premios específicos del código o premios globales como fallback
+                    premiosActuales = datosCodigo.premios && datosCodigo.premios.length > 0 
+                        ? [...datosCodigo.premios] 
+                        : [...premiosDisponibles];
                     tiradasRestantes = datosCodigo.tiradasRestantes;
                     
                     mostrarNotificacion(`¡Bienvenida ${nombreUsuario}! Código válido con ${tiradasRestantes} tirada(s) 🎉`, 'success');
@@ -1245,7 +1236,57 @@
             }, 1000);
         }
 
-        // === CARGA DE CONFIGURACIÓN VISUAL ===
+        // === INICIALIZACIÓN MAESTRA DE LA PÁGINA ===
+        async function inicializarPagina() {
+            try {
+                // Llamada única al backend para obtener toda la configuración
+                const response = await fetch('/.netlify/functions/config-manager');
+                const result = await response.json();
+                
+                if (response.ok && result.success && result.data) {
+                    // Procesar nombre de la modelo
+                    if (result.data.nombreModelo) {
+                        const tituloElement = document.getElementById('tituloModelo');
+                        if (tituloElement) {
+                            tituloElement.textContent = result.data.nombreModelo;
+                        }
+                        // También actualizar el título de la página
+                        document.title = `${result.data.nombreModelo} - Ruleta Interactiva`;
+                    }
+                    
+                    // Procesar avatar
+                    if (result.data.avatarURL && result.data.avatarURL.startsWith('data:image/')) {
+                        mostrarAvatar(result.data.avatarURL);
+                    }
+                    
+                    // Procesar y guardar premios en variable global
+                    if (result.data.premios && result.data.premios.length > 0) {
+                        premiosDisponibles = [...result.data.premios];
+                    } else {
+                        // Premios por defecto si no hay configurados
+                        premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
+                        console.warn('No hay premios configurados, usando premios por defecto');
+                    }
+                    
+                    // Después de procesar todos los datos, dibujar la ruleta
+                    dibujarRuletaCompleta();
+                    
+                } else {
+                    console.error('Error al cargar configuración:', result);
+                    // Usar configuración por defecto
+                    premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
+                    dibujarRuletaCompleta();
+                }
+                
+            } catch (error) {
+                console.error('Error de conexión al cargar configuración:', error);
+                // Usar configuración por defecto en caso de error
+                premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
+                dibujarRuletaCompleta();
+            }
+        }
+
+        // === CARGA DE CONFIGURACIÓN VISUAL (DEPRECADA - USAR inicializarPagina) ===
         async function cargarConfiguracionVisual() {
             try {
                 const response = await fetch('/.netlify/functions/config-manager');
@@ -1304,14 +1345,11 @@
         }
 
         window.addEventListener('load', async () => {
-            // Cargar configuración visual (nombre y avatar)
-            await cargarConfiguracionVisual();
+            // Función maestra que inicializa toda la configuración de la página
+            await inicializarPagina();
             
             // Inicializar fondo interactivo reactivo al mouse
             inicializarFondoInteractivo();
-            
-            // Eliminado: cargarCodigosPersonalizados() - ahora usamos solo el backend
-            await dibujarRuletaCompleta(); // Ahora es asíncrona para cargar premios dinámicamente
         });
         
         document.getElementById('validarBtn').addEventListener('click', validarCodigo);
@@ -1323,9 +1361,9 @@
         let resizeTimeout;
         window.addEventListener('resize', () => {
             clearTimeout(resizeTimeout);
-            resizeTimeout = setTimeout(async () => {
-                if (premiosActuales && premiosActuales.length > 0) {
-                    await dibujarRuletaCompleta();
+            resizeTimeout = setTimeout(() => {
+                if (premiosDisponibles && premiosDisponibles.length > 0) {
+                    dibujarRuletaCompleta();
                 }
             }, 250); // Debounce para evitar redibujado excesivo
         });
