@@ -52,7 +52,7 @@ exports.handler = async (event, context) => {
                     const premiosPorDefecto = 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos,Contenido Exclusivo,Chat Privado,Foto Personalizada';
                     
                     const newRecord = await configTable.create({
-                        'Avatar URL': '',
+                        'avatarURL': '',
                         'Nombre Modelo': 'Scarlet Lucy',
                         'Premios': premiosPorDefecto
                     });
@@ -72,7 +72,7 @@ exports.handler = async (event, context) => {
                 }
 
                 const record = records[0];
-                const avatarURL = record.get('Avatar URL') || '';
+                const avatarURL = record.get('avatarURL') || '';
                 const nombreModelo = record.get('Nombre Modelo') || 'Scarlet Lucy';
                 const premiosString = record.get('Premios') || 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos';
                 const premios = premiosStringToArray(premiosString);
@@ -120,7 +120,7 @@ exports.handler = async (event, context) => {
                     const premiosPorDefecto = nuevaListaPremios ? premiosArrayToString(nuevaListaPremios) : 'Premio Sorpresa,Pack Fotos Hot,Videollamada 5 minutos';
                     
                     const newRecord = await configTable.create({
-                        'Avatar URL': nuevaAvatarURL || '',
+                        'avatarURL': nuevaAvatarURL || '',
                         'Nombre Modelo': nuevoNombreModelo || 'Scarlet Lucy',
                         'Premios': premiosPorDefecto
                     });
@@ -131,7 +131,7 @@ exports.handler = async (event, context) => {
                     const updateFields = {};
                     
                     if (nuevaAvatarURL !== undefined) {
-                        updateFields['Avatar URL'] = nuevaAvatarURL;
+                        updateFields['avatarURL'] = nuevaAvatarURL;
                     }
                     
                     if (nuevoNombreModelo !== undefined) {
@@ -233,7 +233,7 @@ exports.handler = async (event, context) => {
 
                 // Obtener configuración actualizada para devolver
                 const updatedRecord = await configTable.find(recordId);
-                const avatarURL = updatedRecord.get('Avatar URL') || '';
+                const avatarURL = updatedRecord.get('avatarURL') || '';
                 const nombreModelo = updatedRecord.get('Nombre Modelo') || 'Scarlet Lucy';
                 const premiosString = updatedRecord.get('Premios') || '';
                 const premios = premiosStringToArray(premiosString);
