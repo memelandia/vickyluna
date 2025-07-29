@@ -827,6 +827,11 @@
             }
             
             const canvas = document.getElementById('opciones');
+            if (!canvas) {
+                console.error('Canvas #opciones no encontrado');
+                return;
+            }
+            
             const ctx = canvas.getContext('2d');
             const total = premiosDisponibles.length;
             const radio = 220;
@@ -1060,15 +1065,33 @@
                     
                     codigoActual = codigo;
                     nombreUsuario = datosCodigo.nombreFan;
-                    // Usar premios específicos del código o premios globales como fallback
-                    premiosActuales = datosCodigo.premios && datosCodigo.premios.length > 0 
-                        ? [...datosCodigo.premios] 
-                        : [...premiosDisponibles];
-                    tiradasRestantes = datosCodigo.tiradasRestantes;
+                    
+                    // ✅ CORRECCIÓN: Mejorar gestión de premiosActuales
+                    if (datosCodigo.premios && Array.isArray(datosCodigo.premios) && datosCodigo.premios.length > 0) {
+                        // Usar premios específicos del código
+                        premiosActuales = [...datosCodigo.premios];
+                        console.log('✅ Usando premios específicos del código:', premiosActuales);
+                    } else if (premiosDisponibles && premiosDisponibles.length > 0) {
+                        // Fallback a premios globales
+                        premiosActuales = [...premiosDisponibles];
+                        console.log('⚠️ Usando premios globales como fallback:', premiosActuales);
+                    } else {
+                        // Último fallback a premios por defecto
+                        premiosActuales = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
+                        console.warn('⚠️ Usando premios por defecto - no hay premios configurados');
+                    }
+                    
+                    tiradasRestantes = datosCodigo.tiradasRestantes || 0;
                     
                     mostrarNotificacion(`¡Bienvenida ${nombreUsuario}! Código válido con ${tiradasRestantes} tirada(s) 🎉`, 'success');
                     mostrarMensaje(`💖 ¡Hola ${nombreUsuario}! Tienes ${tiradasRestantes} tirada(s). ¡Mucha suerte! ✨`);
-                    document.getElementById('girarBtn').disabled = false;
+                    
+                    // Habilitar botón de girar solo si hay tiradas disponibles
+                    const girarBtn = document.getElementById('girarBtn');
+                    if (girarBtn) {
+                        girarBtn.disabled = tiradasRestantes <= 0;
+                    }
+                    
                     codigoInput.disabled = true;
                     validarBtn.disabled = true;
                     
@@ -1239,51 +1262,105 @@
         // === INICIALIZACIÓN MAESTRA DE LA PÁGINA ===
         async function inicializarPagina() {
             try {
-                // Llamada única al backend para obtener toda la configuración
-                const response = await fetch('/.netlify/functions/config-manager');
+                console.log('🚀 Iniciando carga de página...');
+                
+                // 1. Crear elementos del DOM primero
+                crearElementosDOM();
+                
+                // 2. Llamada única al backend para obtener toda la configuración
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
                 
-                if (response.ok && result.success && result.data) {
+                if (result.success && result.data) {
+                    console.log('✅ Configuración cargada exitosamente:', result.data);
+                    
                     // Procesar nombre de la modelo
                     if (result.data.nombreModelo) {
-                        const tituloElement = document.getElementById('tituloModelo');
+                        const tituloElement = document.querySelector('.controls-title');
                         if (tituloElement) {
-                            tituloElement.textContent = result.data.nombreModelo;
+                            tituloElement.textContent = `${result.data.nombreModelo} 💖`;
                         }
                         // También actualizar el título de la página
                         document.title = `${result.data.nombreModelo} - Ruleta Interactiva`;
                     }
                     
                     // Procesar avatar
-                    if (result.data.avatarURL && result.data.avatarURL.startsWith('data:image/')) {
+                    if (result.data.avatarURL && result.data.avatarURL.trim() && result.data.avatarURL.startsWith('data:image/')) {
                         mostrarAvatar(result.data.avatarURL);
                     }
                     
                     // Procesar y guardar premios en variable global
-                    if (result.data.premios && result.data.premios.length > 0) {
+                    if (result.data.premios && Array.isArray(result.data.premios) && result.data.premios.length > 0) {
                         premiosDisponibles = [...result.data.premios];
+                        console.log('✅ Premios cargados:', premiosDisponibles);
                     } else {
                         // Premios por defecto si no hay configurados
                         premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
-                        console.warn('No hay premios configurados, usando premios por defecto');
+                        console.warn('⚠️ No hay premios configurados, usando premios por defecto');
                     }
                     
-                    // Después de procesar todos los datos, dibujar la ruleta
+                    // 3. Después de procesar todos los datos, dibujar la ruleta
                     dibujarRuletaCompleta();
                     
                 } else {
-                    console.error('Error al cargar configuración:', result);
-                    // Usar configuración por defecto
-                    premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
-                    dibujarRuletaCompleta();
+                    throw new Error(result.message || 'Error en la respuesta del servidor');
                 }
                 
             } catch (error) {
-                console.error('Error de conexión al cargar configuración:', error);
+                console.error('❌ Error de conexión al cargar configuración:', error);
+                
                 // Usar configuración por defecto en caso de error
                 premiosDisponibles = ['Premio Sorpresa', 'Pack Fotos Hot', 'Videollamada 5 minutos'];
+                
+                // Mostrar título por defecto
+                const tituloElement = document.querySelector('.controls-title');
+                if (tituloElement) {
+                    tituloElement.textContent = 'Scarlet Lucy 💖';
+                }
+                
+                // Dibujar ruleta con configuración por defecto
                 dibujarRuletaCompleta();
+                
+                // Mostrar notificación de error al usuario
+                setTimeout(() => {
+                    mostrarNotificacion('No se pudo cargar la configuración. Usando configuración por defecto.', 'warning');
+                }, 1000);
             }
+        }
+
+        // === FUNCIÓN PARA CREAR ELEMENTOS DEL DOM ===
+        function crearElementosDOM() {
+            const controlsContainer = document.querySelector('.controls-container');
+            const ruletaSection = document.querySelector('.ruleta-section');
+            
+            // Crear sección de controles
+            controlsContainer.innerHTML = `
+                <div class="controls-section">
+                    <h2 class="controls-title">Scarlet Lucy 💖</h2>
+                    <div class="form-title">🎯 Ingresa tu Código 🎯</div>
+                    <input type="text" id="codigo" placeholder="Escribe tu código aquí..." autocomplete="off">
+                    <button id="validarBtn" class="button">✨ Validar Código ✨</button>
+                </div>
+            `;
+            
+            // Crear sección de ruleta
+            ruletaSection.innerHTML = `
+                <div id="ruleta">
+                    <div id="flecha"></div>
+                    <canvas id="opciones" width="450" height="450"></canvas>
+                </div>
+                <button id="girarBtn" class="button" disabled>🎲 ¡Girar la Ruleta de la Suerte! 🎲</button>
+            `;
         }
 
         // === CARGA DE CONFIGURACIÓN VISUAL (DEPRECADA - USAR inicializarPagina) ===
@@ -1348,14 +1425,25 @@
             // Función maestra que inicializa toda la configuración de la página
             await inicializarPagina();
             
+            // Registrar eventos después de crear los elementos DOM
+            registrarEventos();
+            
             // Inicializar fondo interactivo reactivo al mouse
             inicializarFondoInteractivo();
         });
         
-        document.getElementById('validarBtn').addEventListener('click', validarCodigo);
-        document.getElementById('girarBtn').addEventListener('click', () => { soundClick.play(); girarRuleta(); });
-        document.getElementById('popupCloseBtn').addEventListener('click', cerrarPopup);
-        document.getElementById('codigo').addEventListener('keypress', e => { if (e.key === 'Enter') validarCodigo(); });
+        // === FUNCIÓN PARA REGISTRAR EVENTOS ===
+        function registrarEventos() {
+            const validarBtn = document.getElementById('validarBtn');
+            const girarBtn = document.getElementById('girarBtn');
+            const popupCloseBtn = document.getElementById('popupCloseBtn');
+            const codigoInput = document.getElementById('codigo');
+            
+            if (validarBtn) validarBtn.addEventListener('click', validarCodigo);
+            if (girarBtn) girarBtn.addEventListener('click', () => { soundClick.play(); girarRuleta(); });
+            if (popupCloseBtn) popupCloseBtn.addEventListener('click', cerrarPopup);
+            if (codigoInput) codigoInput.addEventListener('keypress', e => { if (e.key === 'Enter') validarCodigo(); });
+        }
         
         // Redibujar ruleta cuando cambie el tamaño de ventana para adaptación responsiva
         let resizeTimeout;

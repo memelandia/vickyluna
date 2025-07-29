@@ -1,11 +1,13 @@
-const { getTable, premiosStringToArray, premiosArrayToString } = require('./utils/airtable');
+const { getTable, premiosStringToArray, premiosArrayToString, corsHeaders } = require('./utils/airtable');
 
 // La tabla 'Configuraciones' debe tener los campos: 'Nombre Modelo' (Single line text), 'avatarURL' (Long text), 'Premios' (Long text).
 // y debe contener una única fila de registro para que esto funcione.
 
 exports.handler = async (event) => {
-    const headers = { 'Access-Control-Allow-Origin': '*' }; // Simplificado para compatibilidad
-    if (event.httpMethod === 'OPTIONS') return { statusCode: 200, headers };
+    // Manejar preflight requests
+    if (event.httpMethod === 'OPTIONS') {
+        return { statusCode: 200, headers: corsHeaders };
+    }
 
     const configTable = getTable('Configuraciones');
 
@@ -34,7 +36,7 @@ exports.handler = async (event) => {
         if (event.httpMethod === 'GET') {
             return {
                 statusCode: 200,
-                headers,
+                headers: corsHeaders,
                 body: JSON.stringify({
                     success: true,
                     data: {
@@ -75,18 +77,22 @@ exports.handler = async (event) => {
 
             return {
                 statusCode: 200,
-                headers,
+                headers: corsHeaders,
                 body: JSON.stringify({ success: true, message: 'Configuración actualizada con éxito.' })
             };
         }
 
-        return { statusCode: 405, headers, body: JSON.stringify({ success: false, message: 'Método no permitido' }) };
+        return { 
+            statusCode: 405, 
+            headers: corsHeaders, 
+            body: JSON.stringify({ success: false, message: 'Método no permitido' }) 
+        };
 
     } catch (error) {
         console.error("Error en config-manager:", error);
         return {
             statusCode: 500,
-            headers,
+            headers: corsHeaders,
             body: JSON.stringify({
                 success: false,
                 message: 'Error interno del servidor: ' + error.message

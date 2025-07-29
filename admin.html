@@ -891,21 +891,33 @@
 
             // Click en la imagen previa para cambiar la imagen
             previewImg.addEventListener('click', function() {
-                if (confirm('¿Quieres cambiar la imagen? Se perderá la imagen actual.')) {
-                    resetearCargaAvatar();
-                }
+                resetearCargaAvatar();
             });
         }
 
         // === GESTIÓN DE CONFIGURACIÓN VISUAL ===
         async function cargarConfiguracion() {
             try {
-                const response = await fetch('/.netlify/functions/config-manager');
+                console.log('🔄 Cargando configuración...');
+                
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
                 
-                if (!response.ok || !result.success) {
+                if (!result.success) {
                     throw new Error(result.message || 'Error al cargar configuración');
                 }
+                
+                console.log('✅ Configuración cargada:', result.data);
                 
                 // Actualizar campo del nombre
                 const nombreInput = document.getElementById('nombreModeloInput');
@@ -914,7 +926,7 @@
                 }
                 
                 // Actualizar vista previa del avatar si existe
-                if (result.data.avatarURL && result.data.avatarURL.startsWith('data:image/')) {
+                if (result.data.avatarURL && result.data.avatarURL.trim() && result.data.avatarURL.startsWith('data:image/')) {
                     const previewImg = document.getElementById('avatarPreview');
                     const uploadLabel = document.getElementById('uploadLabel');
                     const uploadZone = document.getElementById('uploadZone');
@@ -996,15 +1008,29 @@
         
         async function cargarYMostrarPremios() {
             try {
-                const response = await fetch('/.netlify/functions/config-manager');
+                console.log('🔄 Cargando premios...');
+                
+                const response = await fetch('/.netlify/functions/config-manager', {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const result = await response.json();
                 
-                if (!response.ok || !result.success) {
+                if (!result.success) {
                     throw new Error(result.message || 'Error al cargar configuración');
                 }
                 
+                console.log('✅ Premios cargados:', result.data.premios);
+                
                 // Obtener premios desde la configuración unificada
-                premiosLocales = result.data.premios || [];
+                premiosLocales = result.data.premios && Array.isArray(result.data.premios) ? [...result.data.premios] : [];
                 premiosModificados = false;
                 
                 // Mostrar premios en la lista de gestión
@@ -1205,11 +1231,7 @@
         }
         
         async function eliminarPremioLocal(index, nombre) {
-            const confirmed = await mostrarConfirmacion(`¿Estás segura de eliminar el premio "${nombre}"?`);
-            
-            if (!confirmed) return;
-            
-            // Eliminar del array local
+            // Eliminar del array local directamente - sin confirmación redundante
             premiosLocales.splice(index, 1);
             premiosModificados = true;
             
@@ -1335,34 +1357,8 @@
             }
         }
         
-        async function eliminarPremio(id, nombre) {
-            const confirmed = await mostrarConfirmacion(`¿Estás segura de eliminar el premio "${nombre}"? Esta acción no se puede deshacer.`);
-            
-            if (!confirmed) return;
-            
-            try {
-                const response = await fetch('/.netlify/functions/delete-premio', {
-                    method: 'DELETE',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ id })
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok && result.success) {
-                    await cargarYMostrarPremios();
-                    mostrarNotificacion('Premio eliminado exitosamente', 'success');
-                } else {
-                    mostrarNotificacion(result.message || 'Error al eliminar premio', 'error');
-                }
-                
-            } catch (error) {
-                console.error('Error al eliminar premio:', error);
-                mostrarNotificacion('Error de conexión. Intenta de nuevo.', 'error');
-            }
-        }
+        // === FUNCIÓN DE ELIMINACIÓN DIRECTA (DEPRECADA) ===
+        // Esta función es obsoleta, se usa eliminarPremioLocal con gestión local de premios
         
         // === SISTEMA DE NOTIFICACIONES ===
         function mostrarNotificacion(mensaje, tipo = 'success') {
@@ -1840,10 +1836,8 @@
             document.querySelectorAll('[data-action="reactivar"]').forEach(btn => {
                 btn.addEventListener('click', async function() {
                     const codigo = this.getAttribute('data-codigo');
-                    const confirmed = await mostrarConfirmacion(`¿Estás segura de reactivar el código "${codigo}"?`);
-                    if (confirmed) {
-                        await reactivarCodigo(codigo, this);
-                    }
+                    // Reactivar directamente sin confirmación adicional
+                    await reactivarCodigo(codigo, this);
                 });
             });
             
