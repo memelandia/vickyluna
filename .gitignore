@@ -1,3 +1,6 @@
 *.map
 *.mts
 /node_modules
+.env
+# Local Netlify folder
+.netlify

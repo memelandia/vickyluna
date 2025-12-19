@@ -1,7 +1,7 @@
 {
-  "name": "scarletlucy-backend",
+  "name": "lexiflix-backend",
   "version": "1.0.0",
-  "description": "Backend functions for Scarlet Lucy roulette app",
+  "description": "Backend functions for Lexiflix roulette app",
   "main": "index.js",
   "scripts": {
     "dev": "netlify dev",
@@ -21,6 +21,6 @@
     "airtable",
     "serverless"
   ],
-  "author": "Scarlet Lucy",
+  "author": "Lexiflix",
   "license": "MIT"
 }
